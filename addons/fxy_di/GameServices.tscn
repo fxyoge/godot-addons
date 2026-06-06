@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b53y3gukb4hyn"]
+
+[ext_resource type="Script" path="res://addons/fxy_di/GameServices.cs" id="1_game_services"]
+
+[node name="GameServices" type="Node"]
+script = ExtResource("1_game_services")
