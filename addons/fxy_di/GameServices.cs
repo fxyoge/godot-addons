@@ -28,13 +28,31 @@ public partial class GameServices : Node
         => (T)(ContextualResolver.GetService(typeof(T), CreateContext(node))
             ?? throw new InvalidOperationException($"No service for type '{typeof(T)}' has been registered."));
 
+    public object GetRequiredService(Node node, Type serviceType)
+    {
+        ArgumentNullException.ThrowIfNull(serviceType);
+        return ContextualResolver.GetService(serviceType, CreateContext(node))
+            ?? throw new InvalidOperationException($"No service for type '{serviceType}' has been registered.");
+    }
+
     public T? GetService<T>(Node node)
         where T : class
         => (T?)ContextualResolver.GetService(typeof(T), CreateContext(node));
 
+    public object? GetService(Node node, Type serviceType)
+    {
+        ArgumentNullException.ThrowIfNull(serviceType);
+        return ContextualResolver.GetService(serviceType, CreateContext(node));
+    }
+
     public IServiceScope CreateScope() => Provider.CreateScope();
 
     public void DisposeContext(Node node) => ContextualResolver.DisposeContext(CreateContext(node));
+
+    public ServiceResolutionDiagnosticsSnapshot CreateDiagnosticsSnapshot()
+        => ContextualResolver.CreateDiagnosticsSnapshot();
+
+    public void ClearDiagnostics() => ContextualResolver.ClearDiagnostics();
 
     public override void _ExitTree()
     {

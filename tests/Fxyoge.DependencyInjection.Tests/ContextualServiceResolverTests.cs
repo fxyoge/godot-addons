@@ -593,6 +593,65 @@ public sealed class ContextualServiceResolverTests
         Assert.Same(first, second);
     }
 
+    [Fact]
+    public void DiagnosticsCaptureContextualResolutionAndCacheReuse()
+    {
+        using var harness = new Harness(services =>
+            services.AddContextualScoped<ITransactionStore, TransactionStore>("transaction:*"));
+
+        _ = harness.Resolve<ITransactionStore>("transaction:abc");
+        _ = harness.Resolve<ITransactionStore>("runtime", "transaction:abc");
+
+        var snapshot = harness.CreateDiagnosticsSnapshot();
+
+        Assert.Equal(2, snapshot.Traces.Length);
+        Assert.Single(snapshot.Instances);
+        Assert.Equal(snapshot.Traces[0].Root.InstanceId, snapshot.Traces[1].Root.InstanceId);
+        Assert.False(snapshot.Traces[0].Root.CacheHit);
+        Assert.True(snapshot.Traces[1].Root.CacheHit);
+        Assert.Equal("transaction:*::transaction:abc", snapshot.Traces[0].Root.Partition);
+    }
+
+    [Fact]
+    public void DiagnosticsCaptureNestedConstructorDependencies()
+    {
+        using var harness = new Harness(services =>
+        {
+            services.AddTransient<AssetPresenter>();
+            services.AddContextualScoped<IAssetLoader, PreviewAssetLoader>("preview");
+        });
+
+        _ = harness.Resolve<AssetPresenter>("preview");
+
+        var trace = Assert.Single(harness.CreateDiagnosticsSnapshot().Traces);
+
+        Assert.Equal(typeof(AssetPresenter), trace.Root.ServiceType);
+        var dependency = Assert.Single(trace.Root.Dependencies);
+        Assert.Equal(typeof(IAssetLoader), dependency.ServiceType);
+        Assert.Equal(typeof(PreviewAssetLoader), dependency.ImplementationType);
+        Assert.Equal("contextual", dependency.Source);
+    }
+
+    [Fact]
+    public void DiagnosticsCaptureEnumerableItems()
+    {
+        using var harness = new Harness(services =>
+        {
+            services.AddSingleton<ISettingsStore, ProjectSettingsStore>();
+            services.AddContextualScoped<ISettingsStore, PreviewSettingsStore>("preview");
+        });
+
+        _ = harness.Resolve<IEnumerable<ISettingsStore>>("preview");
+
+        var trace = Assert.Single(harness.CreateDiagnosticsSnapshot().Traces);
+
+        Assert.Equal("enumerable", trace.Root.Source);
+        Assert.Collection(
+            trace.Root.Items,
+            item => Assert.Equal(typeof(ProjectSettingsStore), item.ImplementationType),
+            item => Assert.Equal(typeof(PreviewSettingsStore), item.ImplementationType));
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly ServiceProvider _provider;
@@ -621,6 +680,9 @@ public sealed class ContextualServiceResolverTests
 
         public void DisposeContext(params string[] groups)
             => _resolver.DisposeContext(new ContextualResolutionContext(groups));
+
+        public ServiceResolutionDiagnosticsSnapshot CreateDiagnosticsSnapshot()
+            => _resolver.CreateDiagnosticsSnapshot();
 
         public void Dispose()
         {

@@ -1,5 +1,8 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Text;
 using Fxyoge.DependencyInjection;
 using Godot;
 
@@ -7,26 +10,31 @@ namespace ContextsExample.Game;
 
 public partial class Main : Control
 {
+    private static readonly ServiceProbe[] ServiceProbes =
+    [
+        new("controller", typeof(VehicleController)),
+        new("input", typeof(IInputSource)),
+        new("telemetry", typeof(IRunTelemetry)),
+        new("track", typeof(ITrackSession)),
+        new("surface", typeof(ITrackSurface)),
+        new("modifiers", typeof(IEnumerable<ICarModifier>)),
+        new("camera", typeof(ICameraRig)),
+    ];
+
     private readonly List<RaceActor> _actors = new();
-    private Label? _hud;
+    private VBoxContainer? _inspectorRoot;
+    private RichTextLabel? _contextSummary;
+    private GridContainer? _matrix;
+    private RichTextLabel? _details;
+    private ServiceResolutionDiagnosticsSnapshot? _diagnostics;
+    private string _selectedActorName = "Player";
+    private Type _selectedServiceType = typeof(VehicleController);
     private ITrackSession? _track;
     private CameraView _view = new(Vector2.Zero, 1f);
 
     public override void _Ready()
     {
-        _hud = new Label
-        {
-            AnchorLeft = 0,
-            AnchorTop = 0,
-            AnchorRight = 1,
-            OffsetLeft = 16,
-            OffsetTop = 12,
-            OffsetRight = -16,
-            OffsetBottom = 150,
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-        };
-        _hud.AddThemeFontSizeOverride("font_size", 14);
-        AddChild(_hud);
+        BuildInspectorOverlay();
 
         var trackContext = new Node { Name = "TrackContext" };
         AddChild(trackContext);
@@ -69,8 +77,9 @@ public partial class Main : Control
             "camera:garage");
 
         _view = _actors[0].Controller.GetCameraView(_actors[0].State, GetViewportRect().Size);
+        CaptureDiagnostics();
         SetProcess(true);
-        UpdateHud();
+        UpdateInspector();
     }
 
     public override void _Process(double delta)
@@ -82,7 +91,6 @@ public partial class Main : Control
 
         var focus = _actors[0];
         _view = focus.Controller.GetCameraView(focus.State, GetViewportRect().Size, delta);
-        UpdateHud();
         QueueRedraw();
     }
 
@@ -124,28 +132,304 @@ public partial class Main : Control
             groups));
     }
 
-    private void UpdateHud()
+    private void BuildInspectorOverlay()
     {
-        if (_hud is null || _track is null || _actors.Count == 0)
+        var panel = new PanelContainer
+        {
+            AnchorLeft = 0,
+            AnchorTop = 0,
+            AnchorRight = 0,
+            AnchorBottom = 1,
+            OffsetLeft = 12,
+            OffsetTop = 12,
+            OffsetRight = 690,
+            OffsetBottom = -12,
+        };
+        AddChild(panel);
+
+        var margin = new MarginContainer();
+        margin.AddThemeConstantOverride("margin_left", 12);
+        margin.AddThemeConstantOverride("margin_top", 10);
+        margin.AddThemeConstantOverride("margin_right", 12);
+        margin.AddThemeConstantOverride("margin_bottom", 10);
+        panel.AddChild(margin);
+
+        var scroll = new ScrollContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        margin.AddChild(scroll);
+
+        _inspectorRoot = new VBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        scroll.AddChild(_inspectorRoot);
+
+        var title = new Label
+        {
+            Text = "CONTEXTUAL DI INSPECTOR",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        title.AddThemeFontSizeOverride("font_size", 16);
+        _inspectorRoot.AddChild(title);
+
+        _contextSummary = new RichTextLabel
+        {
+            BbcodeEnabled = false,
+            FitContent = true,
+            ScrollActive = false,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        _contextSummary.AddThemeFontSizeOverride("normal_font_size", 12);
+        _inspectorRoot.AddChild(_contextSummary);
+
+        _matrix = new GridContainer
+        {
+            Columns = _actors.Count + 1,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        _inspectorRoot.AddChild(_matrix);
+
+        _details = new RichTextLabel
+        {
+            BbcodeEnabled = false,
+            FitContent = true,
+            ScrollActive = false,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        _details.AddThemeFontSizeOverride("normal_font_size", 12);
+        _inspectorRoot.AddChild(_details);
+    }
+
+    private void CaptureDiagnostics()
+    {
+        var gameServices = GetTree().Root.GetNode<GameServices>("GameServices");
+        gameServices.ClearDiagnostics();
+
+        foreach (var actor in _actors)
+        {
+            foreach (var probe in ServiceProbes)
+            {
+                _ = gameServices.GetRequiredService(actor.Node, probe.Type);
+            }
+        }
+
+        _diagnostics = gameServices.CreateDiagnosticsSnapshot();
+    }
+
+    private void UpdateInspector()
+    {
+        if (_contextSummary is null || _matrix is null || _details is null || _diagnostics is null)
         {
             return;
         }
 
-        var player = _actors[0];
-        var lines = new List<string>
-        {
-            "Contextual Grand Prix",
-            "Drive: W/A/S/D. Camera is the player's contextual chase rig.",
-            $"Shared course session: {_track.Id} | surface: {player.Controller.SurfaceLabel}",
-            player.Hud.BuildLine(player.Name),
-            _actors[1].Hud.BuildLine(_actors[1].Name),
-            _actors[2].Hud.BuildLine(_actors[2].Name),
-            $"Player modifiers: {player.Controller.ModifierLabel}",
-            $"Ghost groups: {string.Join(", ", _actors[2].Groups)}",
-        };
-
-        _hud.Text = string.Join('\n', lines);
+        _contextSummary.Text = BuildContextSummaryText();
+        RebuildServiceMatrix(_diagnostics);
+        _details.Text = BuildDetailsText(_diagnostics);
     }
+
+    private string BuildContextSummaryText()
+    {
+        var text = new StringBuilder();
+        text.AppendLine("CONTEXT NODES");
+        foreach (var actor in _actors)
+        {
+            text.AppendLine($"{actor.Name,-7} {string.Join(", ", actor.Groups)}");
+        }
+
+        return text.ToString();
+    }
+
+    private void RebuildServiceMatrix(ServiceResolutionDiagnosticsSnapshot diagnostics)
+    {
+        if (_matrix is null)
+        {
+            return;
+        }
+
+        ClearChildren(_matrix);
+        _matrix.Columns = _actors.Count + 1;
+
+        _matrix.AddChild(CreateHeaderLabel("service"));
+        foreach (var actor in _actors)
+        {
+            _matrix.AddChild(CreateHeaderLabel(actor.Name));
+        }
+
+        foreach (var probe in ServiceProbes)
+        {
+            _matrix.AddChild(CreateHeaderLabel(probe.Label));
+            foreach (var actor in _actors)
+            {
+                var trace = FindTrace(diagnostics, actor, probe.Type);
+                _matrix.AddChild(CreateMatrixButton(actor, probe, trace));
+            }
+        }
+    }
+
+    private string BuildDetailsText(ServiceResolutionDiagnosticsSnapshot diagnostics)
+    {
+        var actor = _actors.FirstOrDefault(actor => actor.Name == _selectedActorName) ?? _actors[0];
+        var probe = ServiceProbes.FirstOrDefault(probe => probe.Type == _selectedServiceType) ?? ServiceProbes[0];
+        var trace = FindTrace(diagnostics, actor, probe.Type);
+        var text = new StringBuilder();
+
+        text.AppendLine();
+        text.AppendLine($"SELECTED: {actor.Name} / {probe.Label}");
+        text.AppendLine($"groups: {string.Join(", ", actor.Groups)}");
+        text.AppendLine();
+
+        if (trace is null)
+        {
+            text.AppendLine("missing trace");
+            return text.ToString();
+        }
+
+        text.AppendLine("RESOLUTION GRAPH");
+        AppendNode(text, trace.Root, 0);
+        text.AppendLine();
+
+        text.AppendLine("CONTEXTUAL RULE DECISIONS");
+        foreach (var registration in trace.Root.ContextualRegistrations)
+        {
+            var state = registration.Matches ? "match" : "skip ";
+            var partition = registration.Partition is null ? "" : $" partition={Shorten(registration.Partition, 56)}";
+            text.AppendLine(
+                $"  {state} {ShortType(registration.ImplementationType),-24} rule={registration.Rule}{partition}");
+        }
+
+        if (trace.Root.ContextualRegistrations.Length == 0)
+        {
+            text.AppendLine("  no contextual registrations for this service type");
+        }
+
+        text.AppendLine();
+        text.AppendLine("INSTANCE LEDGER");
+        foreach (var instance in diagnostics.Instances
+            .OrderBy(instance => instance.Source)
+            .ThenBy(instance => instance.Partition ?? "")
+            .ThenBy(instance => instance.ImplementationType.Name))
+        {
+            var lifetime = instance.Lifetime?.ToString() ?? "n/a";
+            var partition = instance.Partition is null ? "root/no partition" : Shorten(instance.Partition, 56);
+            text.AppendLine(
+                $"{instance.Id,-28} {instance.Source,-10} {lifetime,-9} {ShortType(instance.ServiceType)} -> {ShortType(instance.ImplementationType)}");
+            text.AppendLine($"  {partition}");
+        }
+
+        return text.ToString();
+    }
+
+    private static Label CreateHeaderLabel(string text)
+    {
+        var label = new Label
+        {
+            Text = text,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        label.AddThemeFontSizeOverride("font_size", 12);
+        return label;
+    }
+
+    private Button CreateMatrixButton(RaceActor actor, ServiceProbe probe, ServiceResolutionTrace? trace)
+    {
+        var selected = actor.Name == _selectedActorName && probe.Type == _selectedServiceType;
+        var button = new Button
+        {
+            Text = Shorten(DescribeCell(trace), 18),
+            ToggleMode = true,
+            ButtonPressed = selected,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            TooltipText = trace is null ? "No trace" : DescribeCell(trace),
+        };
+        button.AddThemeFontSizeOverride("font_size", 11);
+        button.Pressed += () =>
+        {
+            _selectedActorName = actor.Name;
+            _selectedServiceType = probe.Type;
+            UpdateInspector();
+        };
+        return button;
+    }
+
+    private static void ClearChildren(Node node)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            node.RemoveChild(child);
+            child.QueueFree();
+        }
+    }
+
+    private static void AppendNode(StringBuilder text, ServiceResolutionTraceNode node, int depth)
+    {
+        var prefix = new string(' ', depth * 2);
+        text.AppendLine(
+            $"{prefix}{ShortType(node.ServiceType)} -> {DescribeNodeResult(node)}");
+
+        foreach (var item in node.Items)
+        {
+            text.AppendLine(
+                $"{prefix}  item {ShortType(item.ServiceType)} -> {ShortType(item.ImplementationType)} {item.InstanceId}");
+        }
+
+        foreach (var dependency in node.Dependencies)
+        {
+            AppendNode(text, dependency, depth + 1);
+        }
+    }
+
+    private ServiceResolutionTrace? FindTrace(
+        ServiceResolutionDiagnosticsSnapshot diagnostics,
+        RaceActor actor,
+        Type serviceType)
+    {
+        var groups = actor.Groups.OrderBy(group => group).ToImmutableArray();
+        return diagnostics.Traces
+            .LastOrDefault(trace => trace.ServiceType == serviceType
+                && trace.ContextGroups.SequenceEqual(groups));
+    }
+
+    private static string DescribeCell(ServiceResolutionTrace? trace)
+        => trace is null ? "no trace" : DescribeNodeResult(trace.Root);
+
+    private static string DescribeNodeResult(ServiceResolutionTraceNode node)
+    {
+        if (node.Source == "enumerable")
+        {
+            return string.Join(" + ", node.Items.Select(item => ShortType(item.ImplementationType)));
+        }
+
+        var cache = node.CacheHit is null ? "" : node.CacheHit.Value ? " hit" : " new";
+        return $"{ShortType(node.ImplementationType)} {node.InstanceId}{cache}";
+    }
+
+    private static string ShortType(Type? type)
+    {
+        if (type is null)
+        {
+            return "null";
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+        {
+            return $"IEnumerable<{ShortType(type.GetGenericArguments()[0])}>";
+        }
+
+        if (type.IsArray)
+        {
+            return $"{ShortType(type.GetElementType())}[]";
+        }
+
+        return type.Name;
+    }
+
+    private static string Shorten(string value, int maxLength)
+        => value.Length <= maxLength ? value : value[..(maxLength - 3)] + "...";
 
     private void DrawWorldBackground(RaceCourse course)
     {
@@ -321,4 +605,6 @@ public partial class Main : Control
         VehicleController Controller,
         VehicleHudModel Hud,
         IReadOnlyList<string> Groups);
+
+    private sealed record ServiceProbe(string Label, Type Type);
 }
