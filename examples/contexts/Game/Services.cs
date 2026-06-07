@@ -396,7 +396,13 @@ public sealed class RuntimeCameraRig : ICameraRig
     public Color Accent { get; } = new(1f, 1f, 1f, 0.28f);
 
     public CameraView GetView(VehicleState focus, ITrackSession track, Vector2 viewportSize)
-        => new(focus.Position + focus.Velocity * 0.32f, 0.72f);
+    {
+        const float zoom = 0.72f;
+        var speed = focus.Velocity.Length();
+        var lead = Mathf.Clamp(speed * 0.24f, 72f, 150f);
+        var center = focus.Position + Vector2.FromAngle(focus.Heading) * lead;
+        return CameraBounds.ClampToCourse(center, zoom, viewportSize, track.Course.Bounds);
+    }
 }
 
 public sealed class ReplayCameraRig : ICameraRig
@@ -408,7 +414,11 @@ public sealed class ReplayCameraRig : ICameraRig
     public Color Accent { get; } = new(1f, 0.86f, 0.2f, 0.42f);
 
     public CameraView GetView(VehicleState focus, ITrackSession track, Vector2 viewportSize)
-        => new(focus.Position + Vector2.FromAngle(focus.Heading) * 180f, 0.64f);
+    {
+        const float zoom = 0.64f;
+        var center = focus.Position + Vector2.FromAngle(focus.Heading) * 180f;
+        return CameraBounds.ClampToCourse(center, zoom, viewportSize, track.Course.Bounds);
+    }
 }
 
 public sealed class PreviewCameraRig : ICameraRig
@@ -420,7 +430,45 @@ public sealed class PreviewCameraRig : ICameraRig
     public Color Accent { get; } = new(0.9f, 0.38f, 1f, 0.45f);
 
     public CameraView GetView(VehicleState focus, ITrackSession track, Vector2 viewportSize)
-        => new(track.Course.GaragePosition, 1.2f);
+    {
+        const float zoom = 1.2f;
+        return CameraBounds.ClampToCourse(track.Course.GaragePosition, zoom, viewportSize, track.Course.Bounds);
+    }
+}
+
+internal static class CameraBounds
+{
+    public static CameraView ClampToCourse(Vector2 center, float zoom, Vector2 viewportSize, Rect2 bounds)
+    {
+        if (viewportSize.X <= 0f || viewportSize.Y <= 0f || zoom <= 0f)
+        {
+            return new CameraView(center, zoom);
+        }
+
+        var halfVisibleWorld = viewportSize / (zoom * 2f);
+        var min = bounds.Position + halfVisibleWorld;
+        var max = bounds.End - halfVisibleWorld;
+
+        if (min.X > max.X)
+        {
+            center.X = bounds.GetCenter().X;
+        }
+        else
+        {
+            center.X = Mathf.Clamp(center.X, min.X, max.X);
+        }
+
+        if (min.Y > max.Y)
+        {
+            center.Y = bounds.GetCenter().Y;
+        }
+        else
+        {
+            center.Y = Mathf.Clamp(center.Y, min.Y, max.Y);
+        }
+
+        return new CameraView(center, zoom);
+    }
 }
 
 public sealed class VehicleController
@@ -430,6 +478,7 @@ public sealed class VehicleController
     private readonly ITrackSession _track;
     private readonly ITrackSurface _surface;
     private readonly ICarModifier[] _modifiers;
+    private CameraView? _cameraView;
 
     public VehicleController(
         IInputSource input,
@@ -477,8 +526,21 @@ public sealed class VehicleController
 
     private float LastSpeed { get; set; }
 
-    public CameraView GetCameraView(VehicleState state, Vector2 viewportSize)
-        => Camera.GetView(state, _track, viewportSize);
+    public CameraView GetCameraView(VehicleState state, Vector2 viewportSize, double delta = 0)
+    {
+        var target = Camera.GetView(state, _track, viewportSize);
+        if (_cameraView is not { } current || delta <= 0)
+        {
+            _cameraView = target;
+            return target;
+        }
+
+        var smoothing = 1f - Mathf.Exp((float)delta * -7.5f);
+        var center = current.Center.Lerp(target.Center, smoothing);
+        var view = CameraBounds.ClampToCourse(center, target.Zoom, viewportSize, _track.Course.Bounds);
+        _cameraView = view;
+        return view;
+    }
 
     public void Tick(VehicleState state, double delta)
     {

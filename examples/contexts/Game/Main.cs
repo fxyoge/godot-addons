@@ -81,7 +81,7 @@ public partial class Main : Control
         }
 
         var focus = _actors[0];
-        _view = focus.Controller.GetCameraView(focus.State, GetViewportRect().Size);
+        _view = focus.Controller.GetCameraView(focus.State, GetViewportRect().Size, delta);
         UpdateHud();
         QueueRedraw();
     }
