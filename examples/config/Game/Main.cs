@@ -22,10 +22,10 @@ public partial class Main : Control
     private readonly List<DamageNumber> _damageNumbers = new();
     private readonly RandomNumberGenerator _random = new();
 
-    private IWritableOptionsMonitor<AudioOptions>? _audio;
-    private IWritableOptionsMonitor<InputOptions>? _input;
-    private IWritableOptionsMonitor<GameplayOptions>? _gameplay;
-    private IWritableOptionsMonitor<ProjectDefaultsOptions>? _project;
+    private ISettingsMonitor<AudioOptions>? _audio;
+    private ISettingsMonitor<InputOptions>? _input;
+    private ISettingsMonitor<GameplayOptions>? _gameplay;
+    private ISettingsMonitor<ProjectDefaultsOptions>? _project;
 
     private PanelContainer? _configPanel;
     private Button? _configButton;
@@ -54,10 +54,10 @@ public partial class Main : Control
             .Root
             .GetNode<GameServices>("GameServices");
 
-        _audio = services.GetRequiredService<IWritableOptionsMonitor<AudioOptions>>();
-        _input = services.GetRequiredService<IWritableOptionsMonitor<InputOptions>>();
-        _gameplay = services.GetRequiredService<IWritableOptionsMonitor<GameplayOptions>>();
-        _project = services.GetRequiredService<IWritableOptionsMonitor<ProjectDefaultsOptions>>();
+        _audio = services.GetRequiredService<ISettingsMonitor<AudioOptions>>();
+        _input = services.GetRequiredService<ISettingsMonitor<InputOptions>>();
+        _gameplay = services.GetRequiredService<ISettingsMonitor<GameplayOptions>>();
+        _project = services.GetRequiredService<ISettingsMonitor<ProjectDefaultsOptions>>();
 
         _random.Randomize();
         SetProcess(true);

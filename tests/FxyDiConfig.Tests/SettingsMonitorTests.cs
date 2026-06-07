@@ -5,14 +5,14 @@ using Xunit;
 
 namespace FxyDiConfig.Tests;
 
-public sealed class WritableOptionsMonitorTests
+public sealed class SettingsMonitorTests
 {
     [Fact]
     public void CurrentValueLoadsDefaults()
     {
         var services = CreateServices(store: out _);
 
-        var options = services.GetRequiredService<IWritableOptionsMonitor<TestOptions>>().CurrentValue;
+        var options = services.GetRequiredService<ISettingsMonitor<TestOptions>>().CurrentValue;
 
         Assert.Equal(0.75f, options.Volume);
         Assert.False(options.Muted);
@@ -24,7 +24,7 @@ public sealed class WritableOptionsMonitorTests
     {
         var services = CreateServices(store: out var store);
         var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
-        var monitor = services.GetRequiredService<IWritableOptionsMonitor<TestOptions>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
         var notificationCount = 0;
 
         monitor.OnChange(options =>
@@ -47,7 +47,7 @@ public sealed class WritableOptionsMonitorTests
     {
         var services = CreateServices(store: out var store);
         var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
-        var monitor = services.GetRequiredService<IWritableOptionsMonitor<TestOptions>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
         var session = monitor.CreateSession();
 
         session.Value.Volume = 0.5f;
@@ -68,7 +68,7 @@ public sealed class WritableOptionsMonitorTests
     {
         var services = CreateServices(store: out var store);
         var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
-        var monitor = services.GetRequiredService<IWritableOptionsMonitor<TestOptions>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
 
         await monitor.Update(options => options.Volume = 0.2f);
         runtime.DefaultValue = 0.9f;
@@ -92,7 +92,7 @@ public sealed class WritableOptionsMonitorTests
         });
 
         services.AddSingleton<IConfigOverlayStore>(store);
-        services.AddWritableOptions<InputTestOptions>("input", input =>
+        services.AddSettings<InputTestOptions>("input", input =>
         {
             input.Map(x => x.Jump)
                 .PersistAs("jump")
@@ -103,7 +103,7 @@ public sealed class WritableOptionsMonitorTests
         {
             ValidateOnBuild = true,
             ValidateScopes = true,
-        }).GetRequiredService<IWritableOptionsMonitor<InputTestOptions>>();
+        }).GetRequiredService<ISettingsMonitor<InputTestOptions>>();
 
         await monitor.Update(options => options.Jump = new InputActionBinding
         {
@@ -125,7 +125,7 @@ public sealed class WritableOptionsMonitorTests
         services.AddSingleton(capturedStore);
         services.AddSingleton<IConfigOverlayStore>(capturedStore);
         services.AddSingleton(runtime);
-        services.AddWritableOptions<TestOptions>("settings", settings =>
+        services.AddSettings<TestOptions>("settings", settings =>
         {
             settings.Map(x => x.Volume)
                 .WithUi("Volume", ConfigUiControl.Slider, 0, 1, 0.01)

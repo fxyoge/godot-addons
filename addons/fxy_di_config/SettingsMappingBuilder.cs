@@ -6,12 +6,12 @@ using System.Text;
 
 namespace Fxyoge.DependencyInjection.Configuration;
 
-public sealed class WritableOptionsMappingBuilder<TOptions>
+public sealed class SettingsMappingBuilder<TOptions>
     where TOptions : class, new()
 {
     private readonly List<IOptionPropertyMapping<TOptions>> _mappings = new();
 
-    public WritableOptionsMappingBuilder(string section)
+    public SettingsMappingBuilder(string section)
     {
         Section = section;
     }
@@ -20,7 +20,7 @@ public sealed class WritableOptionsMappingBuilder<TOptions>
 
     internal IReadOnlyList<IOptionPropertyMapping<TOptions>> Build() => _mappings;
 
-    public OptionPropertyMappingBuilder<TOptions, TValue> Map<TValue>(
+    public SettingPropertyMappingBuilder<TOptions, TValue> Map<TValue>(
         Expression<Func<TOptions, TValue>> property)
     {
         if (property.Body is not MemberExpression { Member: PropertyInfo propertyInfo })
@@ -38,7 +38,7 @@ public sealed class WritableOptionsMappingBuilder<TOptions>
         var getter = property.Compile();
         void Setter(TOptions options, TValue value) => propertyInfo.SetValue(options, value);
 
-        return new OptionPropertyMappingBuilder<TOptions, TValue>(
+        return new SettingPropertyMappingBuilder<TOptions, TValue>(
             Section,
             ToSnakeCase(propertyInfo.Name),
             getter,
@@ -77,7 +77,7 @@ public sealed class WritableOptionsMappingBuilder<TOptions>
     }
 }
 
-public sealed class OptionPropertyMappingBuilder<TOptions, TValue>
+public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
     where TOptions : class, new()
 {
     private readonly string _section;
@@ -87,7 +87,7 @@ public sealed class OptionPropertyMappingBuilder<TOptions, TValue>
     private readonly Action<IOptionPropertyMapping<TOptions>> _addMapping;
     private ConfigUiHint? _uiHint;
 
-    internal OptionPropertyMappingBuilder(
+    internal SettingPropertyMappingBuilder(
         string section,
         string key,
         Func<TOptions, TValue> getValue,
@@ -101,7 +101,7 @@ public sealed class OptionPropertyMappingBuilder<TOptions, TValue>
         _addMapping = addMapping;
     }
 
-    public OptionPropertyMappingBuilder<TOptions, TValue> WithUi(
+    public SettingPropertyMappingBuilder<TOptions, TValue> WithUi(
         string label,
         ConfigUiControl control = ConfigUiControl.Automatic,
         double? min = null,
@@ -112,7 +112,7 @@ public sealed class OptionPropertyMappingBuilder<TOptions, TValue>
         return this;
     }
 
-    public OptionPropertyMappingBuilder<TOptions, TValue> PersistAs(string key)
+    public SettingPropertyMappingBuilder<TOptions, TValue> PersistAs(string key)
     {
         _key = key;
         return this;

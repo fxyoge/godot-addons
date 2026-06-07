@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Fxyoge.DependencyInjection.Configuration;
 
-public interface IWritableOptionsRegistration<TOptions>
+public interface ISettingsRegistration<TOptions>
     where TOptions : class, new()
 {
     string Section { get; }

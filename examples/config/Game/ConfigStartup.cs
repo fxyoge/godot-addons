@@ -9,9 +9,9 @@ public sealed class ConfigStartup : IStartup
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddFxyDiConfig();
+        services.AddUserConfig();
 
-        services.AddWritableOptions<AudioOptions>("audio", audio =>
+        services.AddSettings<AudioOptions>("audio", audio =>
         {
             audio.Map(x => x.MasterVolume)
                 .WithUi("Master Volume", ConfigUiControl.Slider, 0, 1, 0.01)
@@ -22,14 +22,14 @@ public sealed class ConfigStartup : IStartup
                 .ToAudioBusMute("Master", false);
         });
 
-        services.AddWritableOptions<InputOptions>("input", input =>
+        services.AddSettings<InputOptions>("input", input =>
         {
             input.Map(x => x.Jump)
                 .WithUi("Jump", ConfigUiControl.KeyBinding)
                 .ToInputAction("jump", Key.Space);
         });
 
-        services.AddWritableOptions<GameplayOptions>("gameplay", gameplay =>
+        services.AddSettings<GameplayOptions>("gameplay", gameplay =>
         {
             gameplay.Map(x => x.Difficulty)
                 .WithUi("Difficulty", ConfigUiControl.Select)
@@ -44,7 +44,7 @@ public sealed class ConfigStartup : IStartup
                 .ToUserConfig(1.0f);
         });
 
-        services.AddWritableOptions<ProjectDefaultsOptions>("project", project =>
+        services.AddSettings<ProjectDefaultsOptions>("project", project =>
         {
             project.Map(x => x.GameTitle)
                 .WithUi("Game Title", ConfigUiControl.Text)

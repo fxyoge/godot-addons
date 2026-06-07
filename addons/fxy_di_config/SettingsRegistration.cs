@@ -2,10 +2,10 @@ using System.Collections.Generic;
 
 namespace Fxyoge.DependencyInjection.Configuration;
 
-public sealed class WritableOptionsRegistration<TOptions> : IWritableOptionsRegistration<TOptions>
+public sealed class SettingsRegistration<TOptions> : ISettingsRegistration<TOptions>
     where TOptions : class, new()
 {
-    public WritableOptionsRegistration(string section, IReadOnlyList<IOptionPropertyMapping<TOptions>> mappings)
+    public SettingsRegistration(string section, IReadOnlyList<IOptionPropertyMapping<TOptions>> mappings)
     {
         Section = section;
         Mappings = mappings;

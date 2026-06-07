@@ -6,7 +6,7 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public static class GodotMappingExtensions
 {
     public static void ToInputAction<TOptions>(
-        this OptionPropertyMappingBuilder<TOptions, InputActionBinding> builder,
+        this SettingPropertyMappingBuilder<TOptions, InputActionBinding> builder,
         string actionName,
         Key fallbackKey)
         where TOptions : class, new()
@@ -19,7 +19,7 @@ public static class GodotMappingExtensions
     }
 
     public static void ToAudioBusVolume<TOptions>(
-        this OptionPropertyMappingBuilder<TOptions, float> builder,
+        this SettingPropertyMappingBuilder<TOptions, float> builder,
         string busName,
         float fallbackLinearVolume)
         where TOptions : class, new()
@@ -29,7 +29,7 @@ public static class GodotMappingExtensions
     }
 
     public static void ToAudioBusMute<TOptions>(
-        this OptionPropertyMappingBuilder<TOptions, bool> builder,
+        this SettingPropertyMappingBuilder<TOptions, bool> builder,
         string busName,
         bool fallbackMuted)
         where TOptions : class, new()
@@ -39,7 +39,7 @@ public static class GodotMappingExtensions
     }
 
     public static void ToProjectSettingDefault<TOptions, TValue>(
-        this OptionPropertyMappingBuilder<TOptions, TValue> builder,
+        this SettingPropertyMappingBuilder<TOptions, TValue> builder,
         string settingPath,
         TValue fallbackDefault)
         where TOptions : class, new()

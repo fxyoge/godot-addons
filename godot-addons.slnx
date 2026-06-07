@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/addons/" />
+  <Folder Name="/addons/fxy_di/">
+    <Project Path="addons/fxy_di/Fxyoge.DependencyInjection.csproj" />
+  </Folder>
+  <Folder Name="/addons/fxy_di_config/">
+    <Project Path="addons/fxy_di_config/Fxyoge.DependencyInjection.Configuration.csproj" />
+  </Folder>
+  <Folder Name="/examples/" />
+  <Folder Name="/examples/basic/">
+    <Project Path="examples/basic/Basic.csproj" />
+  </Folder>
+  <Folder Name="/examples/config/">
+    <Project Path="examples/config/ConfigExample.csproj">
+      <BuildType Project="Debug" />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FxyDiConfig.Tests/FxyDiConfig.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Fxyoge.DependencyInjection.Configuration;
 
-public sealed class WritableOptionsMonitor<TOptions> : IWritableOptionsMonitor<TOptions>
+public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
     where TOptions : class, new()
 {
     private readonly IConfigOverlayStore _store;
@@ -16,9 +16,9 @@ public sealed class WritableOptionsMonitor<TOptions> : IWritableOptionsMonitor<T
     private readonly List<Action<TOptions, string>> _listeners = new();
     private TOptions _currentValue;
 
-    public WritableOptionsMonitor(
+    public SettingsMonitor(
         IConfigOverlayStore store,
-        IEnumerable<IWritableOptionsRegistration<TOptions>> registrations)
+        IEnumerable<ISettingsRegistration<TOptions>> registrations)
     {
         _store = store;
         _mappings = registrations.SelectMany(registration => registration.Mappings).ToArray();
@@ -90,7 +90,7 @@ public sealed class WritableOptionsMonitor<TOptions> : IWritableOptionsMonitor<T
         return ValueTask.CompletedTask;
     }
 
-    public IWritableOptionsSession<TOptions> CreateSession() => new WritableOptionsSession<TOptions>(this, CurrentValue);
+    public ISettingsSession<TOptions> CreateSession() => new SettingsSession<TOptions>(this, CurrentValue);
 
     internal ValueTask Commit(TOptions value, bool save, bool captureOverlay = true)
     {
@@ -177,12 +177,12 @@ public sealed class WritableOptionsMonitor<TOptions> : IWritableOptionsMonitor<T
     }
 }
 
-internal sealed class WritableOptionsSession<TOptions> : IWritableOptionsSession<TOptions>
+internal sealed class SettingsSession<TOptions> : ISettingsSession<TOptions>
     where TOptions : class, new()
 {
-    private readonly WritableOptionsMonitor<TOptions> _monitor;
+    private readonly SettingsMonitor<TOptions> _monitor;
 
-    public WritableOptionsSession(WritableOptionsMonitor<TOptions> monitor, TOptions value)
+    public SettingsSession(SettingsMonitor<TOptions> monitor, TOptions value)
     {
         _monitor = monitor;
         Value = value;

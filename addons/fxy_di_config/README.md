@@ -39,9 +39,9 @@ dotnet add package Microsoft.Extensions.Primitives --version 8.0.0
 ## Configure
 
 ```csharp
-services.AddFxyDiConfig();
+services.AddUserConfig();
 
-services.AddWritableOptions<AudioOptions>("audio", audio =>
+services.AddSettings<AudioOptions>("audio", audio =>
 {
     audio.Map(x => x.MasterVolume)
         .WithUi("Master Volume", ConfigUiControl.Slider, 0, 1, 0.01)
@@ -81,9 +81,9 @@ camera_sensitivity=0.35
 ```csharp
 public sealed class SettingsMenu
 {
-    private readonly IWritableOptionsMonitor<AudioOptions> _audio;
+    private readonly ISettingsMonitor<AudioOptions> _audio;
 
-    public SettingsMenu(IWritableOptionsMonitor<AudioOptions> audio)
+    public SettingsMenu(ISettingsMonitor<AudioOptions> audio)
     {
         _audio = audio;
     }

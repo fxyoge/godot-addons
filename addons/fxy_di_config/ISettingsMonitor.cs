@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Fxyoge.DependencyInjection.Configuration;
 
-public interface IWritableOptionsMonitor<TOptions> : IOptionsMonitor<TOptions>
+public interface ISettingsMonitor<TOptions> : IOptionsMonitor<TOptions>
     where TOptions : class, new()
 {
     IDisposable OnChange(Action<TOptions> listener);
@@ -17,10 +17,10 @@ public interface IWritableOptionsMonitor<TOptions> : IOptionsMonitor<TOptions>
 
     ValueTask Save();
 
-    IWritableOptionsSession<TOptions> CreateSession();
+    ISettingsSession<TOptions> CreateSession();
 }
 
-public interface IWritableOptionsSession<TOptions>
+public interface ISettingsSession<TOptions>
     where TOptions : class, new()
 {
     TOptions Value { get; }
