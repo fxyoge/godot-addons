@@ -53,13 +53,13 @@ internal static class StartupDiscovery
         catch (ReflectionTypeLoadException ex)
         {
             GD.PushWarning(
-                $"Fxy DI skipped assembly '{assembly.FullName}' because one or more types could not be loaded: {ex.Message}");
+                $"fxy_di skipped assembly '{assembly.FullName}' because one or more types could not be loaded: {ex.Message}");
 
             return Array.Empty<Type>();
         }
         catch (Exception ex)
         {
-            GD.PushWarning($"Fxy DI skipped assembly '{assembly.FullName}' while scanning for startups: {ex.Message}");
+            GD.PushWarning($"fxy_di skipped assembly '{assembly.FullName}' while scanning for startups: {ex.Message}");
 
             return Array.Empty<Type>();
         }

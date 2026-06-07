@@ -55,7 +55,7 @@ public partial class Main : Control
 
         var title = new Label
         {
-            Text = "Fxy DI Config",
+            Text = "DI Config",
             HorizontalAlignment = HorizontalAlignment.Left,
         };
         title.AddThemeFontSizeOverride("font_size", 28);

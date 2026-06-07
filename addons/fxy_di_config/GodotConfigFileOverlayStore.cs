@@ -18,7 +18,7 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
             var error = _configFile.Load(_path);
             if (error != Error.Ok)
             {
-                GD.PushWarning($"Fxy DI Config could not load '{_path}': {error}");
+                GD.PushWarning($"fxy_di_config could not load '{_path}': {error}");
             }
         }
     }
@@ -40,7 +40,7 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
         }
         catch (Exception ex)
         {
-            GD.PushWarning($"Fxy DI Config ignored invalid value '{section}/{key}' in '{_path}': {ex.Message}");
+            GD.PushWarning($"fxy_di_config ignored invalid value '{section}/{key}' in '{_path}': {ex.Message}");
             value = default!;
             return false;
         }
@@ -64,7 +64,7 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
         var error = _configFile.Save(_path);
         if (error != Error.Ok)
         {
-            throw new InvalidOperationException($"Fxy DI Config could not save '{_path}': {error}");
+            throw new InvalidOperationException($"fxy_di_config could not save '{_path}': {error}");
         }
     }
 }

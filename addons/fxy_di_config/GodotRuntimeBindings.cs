@@ -121,7 +121,7 @@ public sealed class GodotAudioBusVolumeBinding : IRuntimeConfigBinding<float>
         var busIndex = AudioServer.GetBusIndex(_busName);
         if (busIndex < 0)
         {
-            GD.PushWarning($"Fxy DI Config could not find audio bus '{_busName}'.");
+            GD.PushWarning($"fxy_di_config could not find audio bus '{_busName}'.");
         }
 
         return busIndex;
@@ -170,7 +170,7 @@ public sealed class GodotAudioBusMuteBinding : IRuntimeConfigBinding<bool>
         var busIndex = AudioServer.GetBusIndex(_busName);
         if (busIndex < 0)
         {
-            GD.PushWarning($"Fxy DI Config could not find audio bus '{_busName}'.");
+            GD.PushWarning($"fxy_di_config could not find audio bus '{_busName}'.");
         }
 
         return busIndex;
@@ -207,7 +207,7 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
         }
         catch (Exception ex)
         {
-            GD.PushWarning($"Fxy DI Config could not read ProjectSettings '{_settingPath}': {ex.Message}");
+            GD.PushWarning($"fxy_di_config could not read ProjectSettings '{_settingPath}': {ex.Message}");
             return _fallbackDefault;
         }
     }

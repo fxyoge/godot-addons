@@ -48,7 +48,7 @@ public sealed class ConfigStartup : IStartup
         {
             project.Map(x => x.GameTitle)
                 .WithUi("Game Title", ConfigUiControl.Text)
-                .ToProjectSettingDefault("application/config/name", "Fxy DI Config Example");
+                .ToProjectSettingDefault("application/config/name", "DI Config Example");
         });
     }
 }
