@@ -16,18 +16,13 @@ public interface ISettingsMonitor<TOptions> : IOptionsMonitor<TOptions>
     ValueTask Reset();
 
     ValueTask Save();
-
-    ISettingsSession<TOptions> CreateSession();
 }
 
-public interface ISettingsSession<TOptions>
-    where TOptions : class, new()
+public interface ISettingsTransaction
 {
-    TOptions Value { get; }
-
-    ValueTask Apply();
+    bool HasChanges { get; }
 
     ValueTask Save();
 
-    ValueTask Reset();
+    void Abandon();
 }

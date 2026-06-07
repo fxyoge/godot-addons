@@ -113,4 +113,22 @@ public sealed class SettingsMenu
 }
 ```
 
-Use `CreateSession()` for apply/cancel/reset menu flows.
+Place config menu controls in a Godot group matching
+`settings-transaction:*` to make their settings monitor transactional. The
+same control code can be used outside the menu for immediate updates and inside
+the menu for draft updates:
+
+```csharp
+public partial class DifficultyControl : HBoxContainer
+{
+    private ISettingsMonitor<GameplayOptions>? _gameplay;
+
+    public override void _Ready()
+    {
+        _gameplay = this.GetRequiredService<ISettingsMonitor<GameplayOptions>>();
+    }
+}
+```
+
+Resolve `ISettingsTransaction` from the menu node to save or abandon all draft
+changes made by controls in the same transaction group.

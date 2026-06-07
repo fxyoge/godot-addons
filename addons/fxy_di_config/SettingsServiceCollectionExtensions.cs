@@ -1,4 +1,5 @@
 using System;
+using Fxyoge.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -17,9 +18,13 @@ public static partial class SettingsServiceCollectionExtensions
 
         services.AddSingleton<ISettingsRegistration<TOptions>>(
             new SettingsRegistration<TOptions>(section, mappingBuilder.Build()));
-        services.TryAddSingleton<ISettingsMonitor<TOptions>, SettingsMonitor<TOptions>>();
+        services.TryAddSingleton<SettingsMonitor<TOptions>>();
+        services.TryAddSingleton<ISettingsMonitor<TOptions>>(
+            provider => provider.GetRequiredService<SettingsMonitor<TOptions>>());
         services.TryAddSingleton<Microsoft.Extensions.Options.IOptionsMonitor<TOptions>>(
             provider => provider.GetRequiredService<ISettingsMonitor<TOptions>>());
+        services.AddContextualScoped<ISettingsMonitor<TOptions>, TransactionalSettingsMonitor<TOptions>>(
+            "settings-transaction:*");
 
         return services;
     }
@@ -29,6 +34,7 @@ public static partial class SettingsServiceCollectionExtensions
         string overlayPath = "user://settings.cfg")
     {
         services.TryAddSingleton<IConfigOverlayStore>(_ => new GodotConfigFileOverlayStore(overlayPath));
+        services.AddContextualScoped<ISettingsTransaction, SettingsTransaction>("settings-transaction:*");
         return services;
     }
 }

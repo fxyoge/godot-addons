@@ -44,24 +44,59 @@ public sealed class SettingsMonitorTests
     }
 
     [Fact]
-    public async Task SessionApplyDoesNotSaveUntilSessionSave()
+    public async Task TransactionalMonitorStaysIsolatedUntilTransactionSave()
     {
         var services = CreateServices(store: out var store);
         var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
         var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
-        var session = monitor.CreateSession();
+        var transaction = new SettingsTransaction(store);
+        var transactional = new TransactionalSettingsMonitor<TestOptions>(
+            services.GetRequiredService<SettingsMonitor<TestOptions>>(),
+            transaction,
+            services.GetServices<ISettingsRegistration<TestOptions>>());
+        var liveNotificationCount = 0;
 
-        session.Value.Volume = 0.5f;
-        await session.Apply();
+        monitor.OnChange(_ => liveNotificationCount++);
 
-        Assert.Equal(0.5f, runtime.AppliedValue);
+        await transactional.Update(options => options.Volume = 0.5f);
+
+        Assert.Equal(0.5f, transactional.CurrentValue.Volume);
+        Assert.Equal(0.75f, monitor.CurrentValue.Volume);
+        Assert.Equal(0.75f, runtime.AppliedValue);
         Assert.Equal(0, store.SaveCount);
+        Assert.True(transaction.HasChanges);
+        Assert.Equal(0, liveNotificationCount);
 
-        session.Value.Volume = 0.6f;
-        await session.Save();
+        await transaction.Save();
 
-        Assert.Equal(0.6f, runtime.AppliedValue);
+        Assert.Equal(0.5f, monitor.CurrentValue.Volume);
+        Assert.Equal(0.5f, runtime.AppliedValue);
         Assert.Equal(1, store.SaveCount);
+        Assert.False(transaction.HasChanges);
+        Assert.Equal(1, liveNotificationCount);
+    }
+
+    [Fact]
+    public async Task TransactionAbandonDropsDraftChanges()
+    {
+        var services = CreateServices(store: out var store);
+        var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+        var transaction = new SettingsTransaction(store);
+        var transactional = new TransactionalSettingsMonitor<TestOptions>(
+            services.GetRequiredService<SettingsMonitor<TestOptions>>(),
+            transaction,
+            services.GetServices<ISettingsRegistration<TestOptions>>());
+
+        await transactional.Update(options => options.Volume = 0.5f);
+
+        transaction.Abandon();
+
+        Assert.Equal(0.75f, transactional.CurrentValue.Volume);
+        Assert.Equal(0.75f, monitor.CurrentValue.Volume);
+        Assert.Equal(0.75f, runtime.AppliedValue);
+        Assert.Equal(0, store.SaveCount);
+        Assert.False(transaction.HasChanges);
     }
 
     [Fact]

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Fxyoge.DependencyInjection;
 using Fxyoge.DependencyInjection.Configuration;
 using Godot;
@@ -12,7 +11,7 @@ public partial class Main : Control
     private const float Gravity = 2100f;
     private const float JumpVelocity = -760f;
     private const float PlayerSize = 38f;
-    private const float GroundHeight = 78f;
+    private const float GroundHeight = 150f;
     private const float SplashRadius = 126f;
     private const float ExplosionDuration = 0.34f;
     private const float DamageNumberDuration = 0.72f;
@@ -23,25 +22,11 @@ public partial class Main : Control
     private readonly List<DamageNumber> _damageNumbers = new();
     private readonly RandomNumberGenerator _random = new();
 
-    private ISettingsMonitor<AudioOptions>? _audio;
-    private ISettingsMonitor<InputOptions>? _input;
     private ISettingsMonitor<GameplayOptions>? _gameplay;
-    private ISettingsMonitor<ProjectDefaultsOptions>? _project;
 
-    private PanelContainer? _configPanel;
+    private ConfigMenu? _configMenu;
     private Button? _configButton;
-    private Button? _jumpButton;
-    private HSlider? _volumeSlider;
-    private CheckBox? _muteToggle;
-    private OptionButton? _difficultySelect;
-    private CheckBox? _damageNumbersToggle;
-    private HSlider? _spawnSlider;
-    private LineEdit? _titleEdit;
     private Label? _scoreLabel;
-    private Button? _closeConfigButton;
-    private Button? _resetAllButton;
-    private Button? _openSettingsFolderButton;
-    private Button? _applyTitleButton;
     private AudioStreamPlayer? _jumpSound;
     private AudioStreamPlayer? _landSound;
     private AudioStreamPlayer? _hitSound;
@@ -67,10 +52,8 @@ public partial class Main : Control
             .Root
             .GetNode<GameServices>("GameServices");
 
-        _audio = services.GetRequiredService<ISettingsMonitor<AudioOptions>>();
-        _input = services.GetRequiredService<ISettingsMonitor<InputOptions>>();
+        _ = services.GetRequiredService<ISettingsMonitor<InputOptions>>();
         _gameplay = services.GetRequiredService<ISettingsMonitor<GameplayOptions>>();
-        _project = services.GetRequiredService<ISettingsMonitor<ProjectDefaultsOptions>>();
 
         _random.Randomize();
         BindSceneNodes();
@@ -180,18 +163,7 @@ public partial class Main : Control
     {
         _scoreLabel = GetNode<Label>("ScoreLabel");
         _configButton = GetNode<Button>("ConfigButton");
-        _configPanel = GetNode<PanelContainer>("ConfigPanel");
-        _closeConfigButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/Header/CloseConfigButton");
-        _volumeSlider = GetNode<HSlider>("ConfigPanel/PanelMargin/PanelRoot/VolumeRow/VolumeSlider");
-        _muteToggle = GetNode<CheckBox>("ConfigPanel/PanelMargin/PanelRoot/MuteToggle");
-        _jumpButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/JumpRow/JumpButton");
-        _difficultySelect = GetNode<OptionButton>("ConfigPanel/PanelMargin/PanelRoot/DifficultyRow/DifficultySelect");
-        _damageNumbersToggle = GetNode<CheckBox>("ConfigPanel/PanelMargin/PanelRoot/DamageNumbersToggle");
-        _spawnSlider = GetNode<HSlider>("ConfigPanel/PanelMargin/PanelRoot/SpawnRateRow/SpawnSlider");
-        _titleEdit = GetNode<LineEdit>("ConfigPanel/PanelMargin/PanelRoot/TitleRow/TitleEdit");
-        _applyTitleButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/ApplyTitleButton");
-        _resetAllButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/Footer/ResetAllButton");
-        _openSettingsFolderButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/Footer/OpenSettingsFolderButton");
+        _configMenu = GetNode<ConfigMenu>("ConfigMenu");
         _jumpSound = GetNode<AudioStreamPlayer>("JumpSound");
         _landSound = GetNode<AudioStreamPlayer>("LandSound");
         _hitSound = GetNode<AudioStreamPlayer>("HitSound");
@@ -200,107 +172,22 @@ public partial class Main : Control
     private void ConnectUi()
     {
         _configButton!.Pressed += () => SetConfigOpen(true);
-        _closeConfigButton!.Pressed += () => SetConfigOpen(false);
-        _volumeSlider!.ValueChanged += async value =>
-        {
-            await _audio!.Update(options => options.MasterVolume = (float)value);
-            RefreshUi();
-        };
-
-        _muteToggle!.Toggled += async value =>
-        {
-            await _audio!.Update(options => options.Muted = value);
-            RefreshUi();
-        };
-
-        _jumpButton!.Pressed += async () =>
-        {
-            var current = _input!.CurrentValue.Jump.Bindings.OfType<KeyInputBinding>().FirstOrDefault()?.KeyCode ?? 0;
-            var next = current == (long)Key.J ? Key.Space : Key.J;
-            await _input.Update(options =>
-            {
-                options.Jump = InputActionBindings.FromKeyCode(
-                    (long)next,
-                    keyCode => OS.GetKeycodeString((Key)keyCode));
-            });
-            RefreshUi();
-        };
-
-        _difficultySelect!.ItemSelected += async index =>
-        {
-            await _gameplay!.Update(options => options.Difficulty = _difficultySelect.GetItemText((int)index));
-            RefreshUi();
-        };
-
-        _damageNumbersToggle!.Toggled += async value =>
-        {
-            await _gameplay!.Update(options => options.ShowDamageNumbers = value);
-            RefreshUi();
-        };
-
-        _spawnSlider!.ValueChanged += async value =>
-        {
-            await _gameplay!.Update(options => options.SpawnRate = (float)value);
-            RefreshUi();
-        };
-
-        _titleEdit!.TextSubmitted += async value =>
-        {
-            await _project!.Update(options => options.GameTitle = value);
-            RefreshUi();
-        };
-
-        _applyTitleButton!.Pressed += async () =>
-        {
-            await _project!.Update(options => options.GameTitle = _titleEdit!.Text);
-            RefreshUi();
-        };
-
-        _resetAllButton!.Pressed += async () =>
-        {
-            await _audio!.Reset();
-            await _input!.Reset();
-            await _gameplay!.Reset();
-            await _project!.Reset();
-            RefreshUi();
-        };
-
-        _openSettingsFolderButton!.Pressed += OpenSettingsFolder;
+        _configMenu!.Closed += () => SetConfigOpen(false);
     }
 
     private void ConnectMonitors()
     {
-        _audio!.OnChange(_ => CallDeferred(MethodName.RefreshUi));
-        _input!.OnChange(_ => CallDeferred(MethodName.RefreshUi));
         _gameplay!.OnChange(_ => CallDeferred(MethodName.RefreshUi));
-        _project!.OnChange(_ => CallDeferred(MethodName.RefreshUi));
     }
 
     private void RefreshUi()
     {
-        if (_jumpButton is null)
+        if (_scoreLabel is null)
         {
             return;
         }
 
-        var audio = _audio!.CurrentValue;
-        var input = _input!.CurrentValue;
-        var gameplay = _gameplay!.CurrentValue;
-        var project = _project!.CurrentValue;
-
-        _volumeSlider!.SetValueNoSignal(audio.MasterVolume);
-        _muteToggle!.SetPressedNoSignal(audio.Muted);
-        _jumpButton.Text = input.Jump.DisplayName;
-        _difficultySelect!.Select(Math.Max(0, GetDifficultyIndex(gameplay.Difficulty)));
-        _damageNumbersToggle!.SetPressedNoSignal(gameplay.ShowDamageNumbers);
-        _spawnSlider!.SetValueNoSignal(gameplay.SpawnRate);
-        if (!_titleEdit!.HasFocus() && _titleEdit.Text != project.GameTitle)
-        {
-            _titleEdit.Text = project.GameTitle;
-        }
-
-        _scoreLabel!.Text = $"{project.GameTitle}  Score {_score}";
-        GetWindow().Title = project.GameTitle;
+        _scoreLabel!.Text = $"Score {_score}";
     }
 
     private void ResetArena()
@@ -433,20 +320,11 @@ public partial class Main : Control
 
     private void SetConfigOpen(bool open)
     {
-        _configPanel!.Visible = open;
+        _configMenu!.Visible = open;
         _configButton!.Visible = !open;
     }
 
     private float GetGroundY() => GetViewportRect().Size.Y - GroundHeight;
-
-    private static int GetDifficultyIndex(string difficulty)
-        => difficulty switch
-        {
-            "Easy" => 0,
-            "Normal" => 1,
-            "Hard" => 2,
-            _ => 1,
-        };
 
     private static DifficultySettings GetDifficulty(string difficulty)
         => difficulty switch
@@ -455,18 +333,6 @@ public partial class Main : Control
             "Hard" => new DifficultySettings(205f, 0.8f, 34f),
             _ => new DifficultySettings(155f, 1.0f, 31f),
         };
-
-    private static void OpenSettingsFolder()
-    {
-        var settingsDirectory = ProjectSettings.GlobalizePath("user://");
-        DirAccess.MakeDirRecursiveAbsolute(settingsDirectory);
-
-        var error = OS.ShellOpen(settingsDirectory);
-        if (error != Error.Ok)
-        {
-            GD.PushWarning($"Could not open settings folder '{settingsDirectory}': {error}");
-        }
-    }
 
     private static void PlayTone(AudioStreamPlayer? player, float frequency, float duration, float volume)
     {

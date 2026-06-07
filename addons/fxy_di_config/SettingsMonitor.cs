@@ -66,30 +66,13 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
 
     public ValueTask Set(TOptions value) => Commit(CloneMapped(value), save: true);
 
-    public ValueTask Reset()
-    {
-        TOptions next;
-
-        lock (_sync)
-        {
-            foreach (var mapping in _mappings)
-            {
-                mapping.ResetOverlay(_store);
-            }
-
-            next = LoadCurrentValue();
-        }
-
-        return Commit(next, save: true, captureOverlay: false);
-    }
+    public ValueTask Reset() => Reset(save: true);
 
     public ValueTask Save()
     {
         _store.Save();
         return ValueTask.CompletedTask;
     }
-
-    public ISettingsSession<TOptions> CreateSession() => new SettingsSession<TOptions>(this, CurrentValue);
 
     internal ValueTask Commit(TOptions value, bool save, bool captureOverlay = true)
     {
@@ -124,6 +107,23 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    internal ValueTask Reset(bool save)
+    {
+        TOptions next;
+
+        lock (_sync)
+        {
+            foreach (var mapping in _mappings)
+            {
+                mapping.ResetOverlay(_store);
+            }
+
+            next = LoadCurrentValue();
+        }
+
+        return Commit(next, save, captureOverlay: false);
     }
 
     private TOptions LoadCurrentValue()
@@ -179,30 +179,5 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
             _dispose();
             _isDisposed = true;
         }
-    }
-}
-
-internal sealed class SettingsSession<TOptions> : ISettingsSession<TOptions>
-    where TOptions : class, new()
-{
-    private readonly SettingsMonitor<TOptions> _monitor;
-
-    public SettingsSession(SettingsMonitor<TOptions> monitor, TOptions value)
-    {
-        _monitor = monitor;
-        Value = value;
-    }
-
-    public TOptions Value { get; private set; }
-
-    public ValueTask Apply() => _monitor.Commit(Value, save: false);
-
-    public ValueTask Save() => _monitor.Commit(Value, save: true);
-
-    public ValueTask Reset()
-    {
-        var result = _monitor.Reset();
-        Value = _monitor.CurrentValue;
-        return result;
     }
 }
