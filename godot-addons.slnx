@@ -15,7 +15,11 @@
       <BuildType Project="Debug" />
     </Project>
   </Folder>
+  <Folder Name="/examples/contexts/">
+    <Project Path="examples/contexts/ContextsExample.csproj" />
+  </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Fxyoge.DependencyInjection.Tests/Fxyoge.DependencyInjection.Tests.csproj" />
     <Project Path="tests/FxyDiConfig.Tests/FxyDiConfig.Tests.csproj" />
   </Folder>
 </Solution>
