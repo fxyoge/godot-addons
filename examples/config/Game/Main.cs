@@ -326,11 +326,7 @@ public partial class Main : Control
             var next = current == (long)Key.J ? Key.Space : Key.J;
             await _input.Update(options =>
             {
-                options.Jump = new InputActionBinding
-                {
-                    KeyCode = (long)next,
-                    DisplayName = OS.GetKeycodeString(next),
-                };
+                options.Jump = new InputActionBinding((long)next, OS.GetKeycodeString(next));
             });
             RefreshUi();
         };

@@ -164,6 +164,8 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
         IRuntimeConfigBinding<TValue>? runtimeBinding,
         IConfigValueCodec<TValue> codec)
     {
+        ConfigMappedValue.EnsureSupported<TValue>(descriptor.Section, descriptor.Key);
+
         _addMapping(new OptionPropertyMapping<TOptions, TValue>(
             _section,
             _key,

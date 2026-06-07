@@ -64,4 +64,9 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
     {
         _codec.Remove(store, Section, Key);
     }
+
+    public void CopyValue(TOptions source, TOptions target)
+    {
+        _setValue(target, ConfigMappedValue.Copy(_getValue(source)));
+    }
 }

@@ -24,4 +24,6 @@ public interface IOptionPropertyMapping<TOptions>
     void Apply(TOptions options);
 
     void ResetOverlay(IConfigOverlayStore store);
+
+    void CopyValue(TOptions source, TOptions target);
 }

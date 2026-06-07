@@ -6,6 +6,7 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
 {
     private readonly string _actionName;
     private readonly long _fallbackKeyCode;
+    private long? _managedKeyCode;
 
     public GodotInputActionBinding(string actionName, long fallbackKeyCode)
     {
@@ -21,20 +22,29 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
         {
             if (inputEvent is InputEventKey keyEvent)
             {
-                return CreateBinding((long)keyEvent.Keycode);
+                _managedKeyCode = (long)keyEvent.Keycode;
+                return CreateBinding(_managedKeyCode.Value);
             }
         }
 
+        _managedKeyCode = _fallbackKeyCode;
         return CreateBinding(_fallbackKeyCode);
     }
 
     public void Apply(InputActionBinding value)
     {
         EnsureAction();
-        InputMap.ActionEraseEvents(_actionName);
+        RemoveManagedKeyEvent();
 
         if (value.KeyCode == 0)
         {
+            _managedKeyCode = null;
+            return;
+        }
+
+        if (HasKeyEvent(value.KeyCode))
+        {
+            _managedKeyCode = value.KeyCode;
             return;
         }
 
@@ -42,6 +52,7 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
         {
             Keycode = (Key)value.KeyCode,
         });
+        _managedKeyCode = value.KeyCode;
     }
 
     public ConfigEntryDescriptor Describe(string section, string key, ConfigUiHint? uiHint)
@@ -60,6 +71,36 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
         if (!InputMap.HasAction(_actionName))
         {
             InputMap.AddAction(_actionName);
+        }
+    }
+
+    private bool HasKeyEvent(long keyCode)
+    {
+        foreach (var inputEvent in InputMap.ActionGetEvents(_actionName))
+        {
+            if (inputEvent is InputEventKey keyEvent && (long)keyEvent.Keycode == keyCode)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void RemoveManagedKeyEvent()
+    {
+        if (_managedKeyCode is not { } managedKeyCode)
+        {
+            return;
+        }
+
+        foreach (var inputEvent in InputMap.ActionGetEvents(_actionName))
+        {
+            if (inputEvent is InputEventKey keyEvent && (long)keyEvent.Keycode == managedKeyCode)
+            {
+                InputMap.ActionEraseEvent(_actionName, inputEvent);
+                return;
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 using Fxyoge.DependencyInjection.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -85,11 +86,7 @@ public sealed class SettingsMonitorTests
     {
         var store = new MemoryConfigOverlayStore();
         var services = new ServiceCollection();
-        var runtime = new TestRuntimeBinding<InputActionBinding>(new InputActionBinding
-        {
-            KeyCode = 32,
-            DisplayName = "Space",
-        });
+        var runtime = new TestRuntimeBinding<InputActionBinding>(new InputActionBinding(32, "Space"));
 
         services.AddSingleton<IConfigOverlayStore>(store);
         services.AddSettings<InputTestOptions>("input", input =>
@@ -108,14 +105,86 @@ public sealed class SettingsMonitorTests
             ValidateScopes = true,
         }).GetRequiredService<ISettingsMonitor<InputTestOptions>>();
 
-        await monitor.Update(options => options.Jump = new InputActionBinding
-        {
-            KeyCode = 74,
-            DisplayName = "J",
-        });
+        await monitor.Update(options => options.Jump = new InputActionBinding(74, "J"));
 
         Assert.True(store.TryGet<long>("input", "jump/key_code", out var storedKeyCode));
         Assert.Equal(74, storedKeyCode);
+    }
+
+    [Fact]
+    public void CurrentValueCopiesMappedValuesByAssignment()
+    {
+        var store = new MemoryConfigOverlayStore();
+        var services = new ServiceCollection();
+        var runtime = new TestRuntimeBinding<InputActionBinding>(new InputActionBinding(32, "Space"));
+
+        services.AddSingleton<IConfigOverlayStore>(store);
+        services.AddSettings<InputTestOptions>("input", input =>
+        {
+            input.Map(x => x.Jump)
+                .PersistAs("jump")
+                .ToRuntime(
+                    runtime,
+                    InputActionBinding.FromKeyCode(32),
+                    InputActionBindingConfigValueCodec.Instance);
+        });
+
+        var monitor = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        }).GetRequiredService<ISettingsMonitor<InputTestOptions>>();
+
+        var first = monitor.CurrentValue;
+        var second = monitor.CurrentValue;
+
+        Assert.NotSame(first, second);
+        Assert.Equal(first.Jump, second.Jump);
+    }
+
+    [Fact]
+    public void AddSettingsRejectsMutableReferenceMappedValues()
+    {
+        var services = new ServiceCollection();
+
+        var ex = Assert.Throws<NotSupportedException>(() =>
+        {
+            services.AddSettings<MutableReferenceOptions>("mutable", settings =>
+            {
+                settings.Map(x => x.Value)
+                    .ToUserConfig(new MutableReferenceValue());
+            });
+        });
+
+        Assert.Contains("mutable/value", ex.Message);
+        Assert.Contains("implement ICloneable", ex.Message);
+    }
+
+    [Fact]
+    public void CurrentValueClonesICloneableMappedReferenceValues()
+    {
+        var services = new ServiceCollection();
+        var runtime = new TestRuntimeBinding<CloneableReferenceValue>(new CloneableReferenceValue(10));
+
+        services.AddSingleton<IConfigOverlayStore>(new MemoryConfigOverlayStore());
+        services.AddSingleton(runtime);
+        services.AddSettings<CloneableReferenceOptions>("cloneable", settings =>
+        {
+            settings.Map(x => x.Value)
+                .ToRuntime(runtime, new CloneableReferenceValue(10));
+        });
+
+        var monitor = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        }).GetRequiredService<ISettingsMonitor<CloneableReferenceOptions>>();
+
+        var first = monitor.CurrentValue;
+        first.Value.Amount = 20;
+
+        Assert.Equal(10, monitor.CurrentValue.Value.Amount);
+        Assert.NotSame(first.Value, monitor.CurrentValue.Value);
     }
 
     private static ServiceProvider CreateServices(out MemoryConfigOverlayStore store)
@@ -162,6 +231,32 @@ public sealed class SettingsMonitorTests
     private sealed class InputTestOptions
     {
         public InputActionBinding Jump { get; set; } = new();
+    }
+
+    private sealed class MutableReferenceOptions
+    {
+        public MutableReferenceValue Value { get; set; } = new();
+    }
+
+    private sealed class MutableReferenceValue
+    {
+    }
+
+    private sealed class CloneableReferenceOptions
+    {
+        public CloneableReferenceValue Value { get; set; } = new(0);
+    }
+
+    private sealed class CloneableReferenceValue : ICloneable
+    {
+        public CloneableReferenceValue(int amount)
+        {
+            Amount = amount;
+        }
+
+        public int Amount { get; set; }
+
+        public object Clone() => new CloneableReferenceValue(Amount);
     }
 
     private sealed class TestRuntimeBinding<TValue> : IRuntimeConfigBinding<TValue>

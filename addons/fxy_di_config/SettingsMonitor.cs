@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 
@@ -32,7 +31,7 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         {
             lock (_sync)
             {
-                return Clone(_currentValue);
+                return CloneMapped(_currentValue);
             }
         }
     }
@@ -65,7 +64,7 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         return Commit(next, save: true);
     }
 
-    public ValueTask Set(TOptions value) => Commit(Clone(value), save: true);
+    public ValueTask Set(TOptions value) => Commit(CloneMapped(value), save: true);
 
     public ValueTask Reset()
     {
@@ -114,14 +113,14 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
                 _store.Save();
             }
 
-            _currentValue = Clone(value);
-            publishedValue = Clone(_currentValue);
+            _currentValue = CloneMapped(value);
+            publishedValue = CloneMapped(_currentValue);
             listeners = _listeners.ToArray();
         }
 
         foreach (var listener in listeners)
         {
-            listener(Clone(publishedValue), Options.DefaultName);
+            listener(CloneMapped(publishedValue), Options.DefaultName);
         }
 
         return ValueTask.CompletedTask;
@@ -148,10 +147,16 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         }
     }
 
-    private static TOptions Clone(TOptions value)
+    private TOptions CloneMapped(TOptions value)
     {
-        var json = JsonSerializer.Serialize(value);
-        return JsonSerializer.Deserialize<TOptions>(json) ?? new TOptions();
+        var clone = new TOptions();
+
+        foreach (var mapping in _mappings)
+        {
+            mapping.CopyValue(value, clone);
+        }
+
+        return clone;
     }
 
     private sealed class ListenerSubscription : IDisposable
