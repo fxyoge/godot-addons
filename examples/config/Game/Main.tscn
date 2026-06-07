@@ -1,6 +1,30 @@
-[gd_scene format=3 uid="uid://de26glbaacq6j"]
+[gd_scene load_steps=6 format=3 uid="uid://de26glbaacq6j"]
 
 [ext_resource type="Script" uid="uid://cvdj5o1r36vto" path="res://Game/Main.cs" id="1_main"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_config_panel"]
+bg_color = Color(0.08, 0.1, 0.12, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.16)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_jump"]
+mix_rate = 22050.0
+buffer_length = 0.2
+
+[sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_land"]
+mix_rate = 22050.0
+buffer_length = 0.2
+
+[sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_hit"]
+mix_rate = 22050.0
+buffer_length = 0.2
 
 [node name="Main" type="Control" unique_id=1719609893]
 layout_mode = 3
@@ -10,3 +34,197 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
+
+[node name="ScoreLabel" type="Label" parent="." unique_name_in_owner=true]
+layout_mode = 1
+anchors_preset = -1
+offset_left = 18.0
+offset_top = 14.0
+offset_right = 260.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 22
+
+[node name="ConfigButton" type="Button" parent="." unique_name_in_owner=true]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -118.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = 48.0
+text = "Config"
+
+[node name="ConfigPanel" type="PanelContainer" parent="." unique_name_in_owner=true]
+visible = false
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -430.0
+offset_top = 62.0
+offset_right = -18.0
+offset_bottom = 520.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_config_panel")
+
+[node name="PanelMargin" type="MarginContainer" parent="ConfigPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="PanelRoot" type="VBoxContainer" parent="ConfigPanel/PanelMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "Config"
+
+[node name="CloseConfigButton" type="Button" parent="ConfigPanel/PanelMargin/PanelRoot/Header" unique_name_in_owner=true]
+custom_minimum_size = Vector2(34, 30)
+layout_mode = 2
+text = "X"
+
+[node name="AudioLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Audio"
+
+[node name="VolumeRow" type="HBoxContainer" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="VolumeLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot/VolumeRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+text = "Master"
+
+[node name="VolumeSlider" type="HSlider" parent="ConfigPanel/PanelMargin/PanelRoot/VolumeRow" unique_name_in_owner=true]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+
+[node name="MuteToggle" type="CheckBox" parent="ConfigPanel/PanelMargin/PanelRoot" unique_name_in_owner=true]
+layout_mode = 2
+text = "Muted"
+
+[node name="InputLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Input"
+
+[node name="JumpRow" type="HBoxContainer" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="JumpLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot/JumpRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+text = "Jump"
+
+[node name="JumpButton" type="Button" parent="ConfigPanel/PanelMargin/PanelRoot/JumpRow" unique_name_in_owner=true]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GameLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Game"
+
+[node name="DifficultyRow" type="HBoxContainer" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DifficultyLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot/DifficultyRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+text = "Difficulty"
+
+[node name="DifficultySelect" type="OptionButton" parent="ConfigPanel/PanelMargin/PanelRoot/DifficultyRow" unique_name_in_owner=true]
+layout_mode = 2
+size_flags_horizontal = 3
+item_count = 3
+popup/item_0/text = "Easy"
+popup/item_0/id = 0
+popup/item_1/text = "Normal"
+popup/item_1/id = 1
+popup/item_2/text = "Hard"
+popup/item_2/id = 2
+
+[node name="DamageNumbersToggle" type="CheckBox" parent="ConfigPanel/PanelMargin/PanelRoot" unique_name_in_owner=true]
+layout_mode = 2
+text = "Damage numbers"
+
+[node name="SpawnRateRow" type="HBoxContainer" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SpawnRateLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot/SpawnRateRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+text = "Spawn Rate"
+
+[node name="SpawnSlider" type="HSlider" parent="ConfigPanel/PanelMargin/PanelRoot/SpawnRateRow" unique_name_in_owner=true]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 2.0
+step = 0.05
+
+[node name="WindowLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Window"
+
+[node name="TitleRow" type="HBoxContainer" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="GameTitleLabel" type="Label" parent="ConfigPanel/PanelMargin/PanelRoot/TitleRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+text = "Title"
+
+[node name="TitleEdit" type="LineEdit" parent="ConfigPanel/PanelMargin/PanelRoot/TitleRow" unique_name_in_owner=true]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Title"
+
+[node name="ApplyTitleButton" type="Button" parent="ConfigPanel/PanelMargin/PanelRoot" unique_name_in_owner=true]
+layout_mode = 2
+text = "Apply title"
+
+[node name="Footer" type="HBoxContainer" parent="ConfigPanel/PanelMargin/PanelRoot"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ResetAllButton" type="Button" parent="ConfigPanel/PanelMargin/PanelRoot/Footer" unique_name_in_owner=true]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Reset"
+
+[node name="OpenSettingsFolderButton" type="Button" parent="ConfigPanel/PanelMargin/PanelRoot/Footer" unique_name_in_owner=true]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Files"
+
+[node name="JumpSound" type="AudioStreamPlayer" parent="." unique_name_in_owner=true]
+stream = SubResource("AudioStreamGenerator_jump")
+bus = &"Master"
+
+[node name="LandSound" type="AudioStreamPlayer" parent="." unique_name_in_owner=true]
+stream = SubResource("AudioStreamGenerator_land")
+bus = &"Master"
+
+[node name="HitSound" type="AudioStreamPlayer" parent="." unique_name_in_owner=true]
+stream = SubResource("AudioStreamGenerator_hit")
+bus = &"Master"

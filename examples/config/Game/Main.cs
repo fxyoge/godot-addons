@@ -38,6 +38,10 @@ public partial class Main : Control
     private HSlider? _spawnSlider;
     private LineEdit? _titleEdit;
     private Label? _scoreLabel;
+    private Button? _closeConfigButton;
+    private Button? _resetAllButton;
+    private Button? _openSettingsFolderButton;
+    private Button? _applyTitleButton;
     private AudioStreamPlayer? _jumpSound;
     private AudioStreamPlayer? _landSound;
     private AudioStreamPlayer? _hitSound;
@@ -69,8 +73,8 @@ public partial class Main : Control
         _project = services.GetRequiredService<ISettingsMonitor<ProjectDefaultsOptions>>();
 
         _random.Randomize();
-        BuildUi();
-        BuildAudio();
+        BindSceneNodes();
+        ConnectUi();
         ConnectMonitors();
         ResetArena();
         RefreshUi();
@@ -172,156 +176,44 @@ public partial class Main : Control
         DrawRect(playerRect, new Color(0.9f, 0.08f, 0.08f));
     }
 
-    private void BuildUi()
+    private void BindSceneNodes()
     {
-        _scoreLabel = new Label
-        {
-            AnchorLeft = 0,
-            AnchorTop = 0,
-            AnchorRight = 0,
-            AnchorBottom = 0,
-            OffsetLeft = 18,
-            OffsetTop = 14,
-            OffsetRight = 260,
-            OffsetBottom = 46,
-        };
-        _scoreLabel.AddThemeFontSizeOverride("font_size", 22);
-        AddChild(_scoreLabel);
-
-        _configButton = new Button
-        {
-            Text = "Config",
-            AnchorLeft = 1,
-            AnchorTop = 0,
-            AnchorRight = 1,
-            AnchorBottom = 0,
-            OffsetLeft = -118,
-            OffsetTop = 14,
-            OffsetRight = -18,
-            OffsetBottom = 48,
-        };
-        _configButton.Pressed += () => SetConfigOpen(true);
-        AddChild(_configButton);
-
-        _configPanel = new PanelContainer
-        {
-            Visible = false,
-            AnchorLeft = 1,
-            AnchorTop = 0,
-            AnchorRight = 1,
-            AnchorBottom = 0,
-            OffsetLeft = -430,
-            OffsetTop = 62,
-            OffsetRight = -18,
-            OffsetBottom = 520,
-        };
-        _configPanel.AddThemeStyleboxOverride("panel", MakePanelStyle());
-        AddChild(_configPanel);
-
-        var margin = new MarginContainer();
-        margin.AddThemeConstantOverride("margin_left", 18);
-        margin.AddThemeConstantOverride("margin_top", 14);
-        margin.AddThemeConstantOverride("margin_right", 18);
-        margin.AddThemeConstantOverride("margin_bottom", 18);
-        _configPanel.AddChild(margin);
-
-        var root = new VBoxContainer();
-        root.AddThemeConstantOverride("separation", 12);
-        margin.AddChild(root);
-
-        var header = new HBoxContainer();
-        header.AddThemeConstantOverride("separation", 10);
-        root.AddChild(header);
-
-        var title = new Label
-        {
-            Text = "Config",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        title.AddThemeFontSizeOverride("font_size", 22);
-        header.AddChild(title);
-
-        var close = new Button
-        {
-            Text = "X",
-            CustomMinimumSize = new Vector2(34, 30),
-        };
-        close.Pressed += () => SetConfigOpen(false);
-        header.AddChild(close);
-
-        AddAudioControls(root);
-        AddInputControls(root);
-        AddGameplayControls(root);
-        AddProjectControls(root);
-
-        var footer = new HBoxContainer();
-        footer.AddThemeConstantOverride("separation", 10);
-        root.AddChild(footer);
-
-        var resetAll = new Button
-        {
-            Text = "Reset",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        resetAll.Pressed += async () =>
-        {
-            await _audio!.Reset();
-            await _input!.Reset();
-            await _gameplay!.Reset();
-            await _project!.Reset();
-            RefreshUi();
-        };
-        footer.AddChild(resetAll);
-
-        var openSettingsFolder = new Button
-        {
-            Text = "Files",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        openSettingsFolder.Pressed += OpenSettingsFolder;
-        footer.AddChild(openSettingsFolder);
+        _scoreLabel = GetNode<Label>("ScoreLabel");
+        _configButton = GetNode<Button>("ConfigButton");
+        _configPanel = GetNode<PanelContainer>("ConfigPanel");
+        _closeConfigButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/Header/CloseConfigButton");
+        _volumeSlider = GetNode<HSlider>("ConfigPanel/PanelMargin/PanelRoot/VolumeRow/VolumeSlider");
+        _muteToggle = GetNode<CheckBox>("ConfigPanel/PanelMargin/PanelRoot/MuteToggle");
+        _jumpButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/JumpRow/JumpButton");
+        _difficultySelect = GetNode<OptionButton>("ConfigPanel/PanelMargin/PanelRoot/DifficultyRow/DifficultySelect");
+        _damageNumbersToggle = GetNode<CheckBox>("ConfigPanel/PanelMargin/PanelRoot/DamageNumbersToggle");
+        _spawnSlider = GetNode<HSlider>("ConfigPanel/PanelMargin/PanelRoot/SpawnRateRow/SpawnSlider");
+        _titleEdit = GetNode<LineEdit>("ConfigPanel/PanelMargin/PanelRoot/TitleRow/TitleEdit");
+        _applyTitleButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/ApplyTitleButton");
+        _resetAllButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/Footer/ResetAllButton");
+        _openSettingsFolderButton = GetNode<Button>("ConfigPanel/PanelMargin/PanelRoot/Footer/OpenSettingsFolderButton");
+        _jumpSound = GetNode<AudioStreamPlayer>("JumpSound");
+        _landSound = GetNode<AudioStreamPlayer>("LandSound");
+        _hitSound = GetNode<AudioStreamPlayer>("HitSound");
     }
 
-    private void BuildAudio()
+    private void ConnectUi()
     {
-        _jumpSound = CreateTonePlayer();
-        _landSound = CreateTonePlayer();
-        _hitSound = CreateTonePlayer();
-    }
-
-    private void AddAudioControls(VBoxContainer root)
-    {
-        root.AddChild(MakeSectionLabel("Audio"));
-
-        _volumeSlider = new HSlider
-        {
-            MinValue = 0,
-            MaxValue = 1,
-            Step = 0.01,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        _volumeSlider.ValueChanged += async value =>
+        _configButton!.Pressed += () => SetConfigOpen(true);
+        _closeConfigButton!.Pressed += () => SetConfigOpen(false);
+        _volumeSlider!.ValueChanged += async value =>
         {
             await _audio!.Update(options => options.MasterVolume = (float)value);
             RefreshUi();
         };
-        root.AddChild(MakeRow("Master", _volumeSlider));
 
-        _muteToggle = new CheckBox { Text = "Muted" };
-        _muteToggle.Toggled += async value =>
+        _muteToggle!.Toggled += async value =>
         {
             await _audio!.Update(options => options.Muted = value);
             RefreshUi();
         };
-        root.AddChild(_muteToggle);
-    }
 
-    private void AddInputControls(VBoxContainer root)
-    {
-        root.AddChild(MakeSectionLabel("Input"));
-
-        _jumpButton = new Button();
-        _jumpButton.Pressed += async () =>
+        _jumpButton!.Pressed += async () =>
         {
             var current = _input!.CurrentValue.Jump.Bindings.OfType<KeyInputBinding>().FirstOrDefault()?.KeyCode ?? 0;
             var next = current == (long)Key.J ? Key.Space : Key.J;
@@ -333,72 +225,47 @@ public partial class Main : Control
             });
             RefreshUi();
         };
-        root.AddChild(MakeRow("Jump", _jumpButton));
-    }
 
-    private void AddGameplayControls(VBoxContainer root)
-    {
-        root.AddChild(MakeSectionLabel("Game"));
-
-        _difficultySelect = new OptionButton();
-        foreach (var difficulty in new[] { "Easy", "Normal", "Hard" })
-        {
-            _difficultySelect.AddItem(difficulty);
-        }
-
-        _difficultySelect.ItemSelected += async index =>
+        _difficultySelect!.ItemSelected += async index =>
         {
             await _gameplay!.Update(options => options.Difficulty = _difficultySelect.GetItemText((int)index));
             RefreshUi();
         };
-        root.AddChild(MakeRow("Difficulty", _difficultySelect));
 
-        _damageNumbersToggle = new CheckBox { Text = "Damage numbers" };
-        _damageNumbersToggle.Toggled += async value =>
+        _damageNumbersToggle!.Toggled += async value =>
         {
             await _gameplay!.Update(options => options.ShowDamageNumbers = value);
             RefreshUi();
         };
-        root.AddChild(_damageNumbersToggle);
 
-        _spawnSlider = new HSlider
-        {
-            MinValue = 0.1,
-            MaxValue = 2.0,
-            Step = 0.05,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        _spawnSlider.ValueChanged += async value =>
+        _spawnSlider!.ValueChanged += async value =>
         {
             await _gameplay!.Update(options => options.SpawnRate = (float)value);
             RefreshUi();
         };
-        root.AddChild(MakeRow("Spawn Rate", _spawnSlider));
-    }
 
-    private void AddProjectControls(VBoxContainer root)
-    {
-        root.AddChild(MakeSectionLabel("Window"));
-
-        _titleEdit = new LineEdit
-        {
-            PlaceholderText = "Title",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        _titleEdit.TextSubmitted += async value =>
+        _titleEdit!.TextSubmitted += async value =>
         {
             await _project!.Update(options => options.GameTitle = value);
             RefreshUi();
         };
-        root.AddChild(MakeRow("Title", _titleEdit));
 
-        var applyTitle = new Button { Text = "Apply title" };
-        applyTitle.Pressed += async () =>
+        _applyTitleButton!.Pressed += async () =>
         {
             await _project!.Update(options => options.GameTitle = _titleEdit!.Text);
             RefreshUi();
         };
-        root.AddChild(applyTitle);
+
+        _resetAllButton!.Pressed += async () =>
+        {
+            await _audio!.Reset();
+            await _input!.Reset();
+            await _gameplay!.Reset();
+            await _project!.Reset();
+            RefreshUi();
+        };
+
+        _openSettingsFolderButton!.Pressed += OpenSettingsFolder;
     }
 
     private void ConnectMonitors()
@@ -601,21 +468,6 @@ public partial class Main : Control
         }
     }
 
-    private AudioStreamPlayer CreateTonePlayer()
-    {
-        var player = new AudioStreamPlayer
-        {
-            Bus = "Master",
-            Stream = new AudioStreamGenerator
-            {
-                MixRate = ToneSampleRate,
-                BufferLength = 0.2f,
-            },
-        };
-        AddChild(player);
-        return player;
-    }
-
     private static void PlayTone(AudioStreamPlayer? player, float frequency, float duration, float volume)
     {
         if (player?.Stream is not AudioStreamGenerator generator)
@@ -639,45 +491,6 @@ public partial class Main : Control
             var sample = Mathf.Sin(Mathf.Tau * frequency * i / generator.MixRate) * volume * envelope;
             playback.PushFrame(new Vector2(sample, sample));
         }
-    }
-
-    private static Label MakeSectionLabel(string text)
-    {
-        var label = new Label { Text = text };
-        label.AddThemeFontSizeOverride("font_size", 16);
-        return label;
-    }
-
-    private static Control MakeRow(string labelText, Control control)
-    {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
-        row.AddChild(new Label
-        {
-            Text = labelText,
-            CustomMinimumSize = new Vector2(92, 0),
-        });
-        control.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        row.AddChild(control);
-        return row;
-    }
-
-    private static StyleBoxFlat MakePanelStyle()
-    {
-        var style = new StyleBoxFlat
-        {
-            BgColor = new Color(0.08f, 0.1f, 0.12f, 0.92f),
-            BorderColor = new Color(1f, 1f, 1f, 0.16f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 8,
-            CornerRadiusTopRight = 8,
-            CornerRadiusBottomLeft = 8,
-            CornerRadiusBottomRight = 8,
-        };
-        return style;
     }
 
     private sealed class Enemy
