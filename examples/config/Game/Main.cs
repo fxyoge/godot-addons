@@ -46,10 +46,18 @@ public partial class Main : Control
     private float _spawnTimer;
     private bool _grounded = true;
     private bool _jumpWasPressed;
+    private bool _isReady;
     private int _score;
+
+    public override void _EnterTree()
+    {
+        SetProcess(false);
+    }
 
     public override void _Ready()
     {
+        SetProcess(false);
+
         var services = GetTree()
             .Root
             .GetNode<GameServices>("GameServices");
@@ -60,16 +68,22 @@ public partial class Main : Control
         _project = services.GetRequiredService<ISettingsMonitor<ProjectDefaultsOptions>>();
 
         _random.Randomize();
-        SetProcess(true);
         BuildUi();
         BuildAudio();
         ConnectMonitors();
         ResetArena();
         RefreshUi();
+        _isReady = true;
+        SetProcess(true);
     }
 
     public override void _Process(double delta)
     {
+        if (!_isReady)
+        {
+            return;
+        }
+
         var seconds = (float)delta;
         var wasGrounded = _grounded;
         var jumpPressed = Input.IsActionPressed("jump");

@@ -7,9 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="addons/**/*.cs" />
-    <ProjectReference Include="../../addons/fxy_di/Fxyoge.DependencyInjection.csproj" />
-    <ProjectReference Include="../../addons/fxy_di_config/Fxyoge.DependencyInjection.Configuration.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
   </ItemGroup>
 
 </Project>
