@@ -9,6 +9,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
     private readonly Action<TOptions, TValue> _setValue;
     private readonly TValue _fallbackDefault;
     private readonly IRuntimeConfigBinding<TValue>? _runtimeBinding;
+    private readonly IConfigValueCodec<TValue> _codec;
 
     public OptionPropertyMapping(
         string section,
@@ -17,7 +18,8 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
         Action<TOptions, TValue> setValue,
         TValue fallbackDefault,
         ConfigEntryDescriptor descriptor,
-        IRuntimeConfigBinding<TValue>? runtimeBinding)
+        IRuntimeConfigBinding<TValue>? runtimeBinding,
+        IConfigValueCodec<TValue> codec)
     {
         Section = section;
         Key = key;
@@ -26,6 +28,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
         _fallbackDefault = fallbackDefault;
         Descriptor = descriptor;
         _runtimeBinding = runtimeBinding;
+        _codec = codec;
     }
 
     private string Section { get; }
@@ -41,7 +44,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
 
     public void LoadOverlay(TOptions options, IConfigOverlayStore store)
     {
-        if (store.TryGet<TValue>(Section, Key, out var value))
+        if (_codec.TryRead(store, Section, Key, out var value))
         {
             _setValue(options, value);
         }
@@ -49,7 +52,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
 
     public void CaptureOverlay(TOptions options, IConfigOverlayStore store)
     {
-        store.Set(Section, Key, _getValue(options));
+        _codec.Write(store, Section, Key, _getValue(options));
     }
 
     public void Apply(TOptions options)
@@ -59,6 +62,6 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
 
     public void ResetOverlay(IConfigOverlayStore store)
     {
-        store.Remove(Section, Key);
+        _codec.Remove(store, Section, Key);
     }
 }

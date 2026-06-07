@@ -64,9 +64,5 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
     }
 
     private static InputActionBinding CreateBinding(long keyCode)
-        => new()
-        {
-            KeyCode = keyCode,
-            DisplayName = keyCode == 0 ? "Unbound" : OS.GetKeycodeString((Key)keyCode),
-        };
+        => InputActionBinding.FromKeyCode(keyCode, static value => OS.GetKeycodeString((Key)value));
 }

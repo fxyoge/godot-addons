@@ -96,7 +96,10 @@ public sealed class SettingsMonitorTests
         {
             input.Map(x => x.Jump)
                 .PersistAs("jump")
-                .ToRuntime(runtime, new InputActionBinding { KeyCode = 32, DisplayName = "Space" });
+                .ToRuntime(
+                    runtime,
+                    InputActionBinding.FromKeyCode(32),
+                    InputActionBindingConfigValueCodec.Instance);
         });
 
         var monitor = services.BuildServiceProvider(new ServiceProviderOptions
@@ -111,8 +114,8 @@ public sealed class SettingsMonitorTests
             DisplayName = "J",
         });
 
-        Assert.True(store.TryGet<InputActionBinding>("input", "jump", out var stored));
-        Assert.Equal(74, stored.KeyCode);
+        Assert.True(store.TryGet<long>("input", "jump/key_code", out var storedKeyCode));
+        Assert.Equal(74, storedKeyCode);
     }
 
     private static ServiceProvider CreateServices(out MemoryConfigOverlayStore store)

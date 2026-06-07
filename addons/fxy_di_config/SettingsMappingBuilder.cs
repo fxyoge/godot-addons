@@ -119,19 +119,29 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
     }
 
     public void ToUserConfig(TValue defaultValue)
+        => ToUserConfig(defaultValue, ScalarConfigValueCodec<TValue>.Instance);
+
+    public void ToUserConfig(TValue defaultValue, IConfigValueCodec<TValue> codec)
     {
-        Add(defaultValue, ConfigValueSource.UserConfig, runtimeBinding: null);
+        Add(defaultValue, ConfigValueSource.UserConfig, runtimeBinding: null, codec);
     }
 
     public void ToRuntime(IRuntimeConfigBinding<TValue> runtimeBinding, TValue fallbackDefault)
+        => ToRuntime(runtimeBinding, fallbackDefault, ScalarConfigValueCodec<TValue>.Instance);
+
+    public void ToRuntime(
+        IRuntimeConfigBinding<TValue> runtimeBinding,
+        TValue fallbackDefault,
+        IConfigValueCodec<TValue> codec)
     {
-        Add(fallbackDefault, runtimeBinding.Describe(_section, _key, _uiHint), runtimeBinding);
+        Add(fallbackDefault, runtimeBinding.Describe(_section, _key, _uiHint), runtimeBinding, codec);
     }
 
     private void Add(
         TValue fallbackDefault,
         ConfigValueSource source,
-        IRuntimeConfigBinding<TValue>? runtimeBinding)
+        IRuntimeConfigBinding<TValue>? runtimeBinding,
+        IConfigValueCodec<TValue> codec)
     {
         Add(
             fallbackDefault,
@@ -144,13 +154,15 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
                 RuntimeMutable: true,
                 RequiresRestart: false,
                 _uiHint),
-            runtimeBinding);
+            runtimeBinding,
+            codec);
     }
 
     private void Add(
         TValue fallbackDefault,
         ConfigEntryDescriptor descriptor,
-        IRuntimeConfigBinding<TValue>? runtimeBinding)
+        IRuntimeConfigBinding<TValue>? runtimeBinding,
+        IConfigValueCodec<TValue> codec)
     {
         _addMapping(new OptionPropertyMapping<TOptions, TValue>(
             _section,
@@ -159,6 +171,7 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
             _setValue,
             fallbackDefault,
             descriptor,
-            runtimeBinding));
+            runtimeBinding,
+            codec));
     }
 }

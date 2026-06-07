@@ -45,17 +45,30 @@ services.AddSettings<AudioOptions>("audio", audio =>
 {
     audio.Map(x => x.MasterVolume)
         .WithUi("Master Volume", ConfigUiControl.Slider, 0, 1, 0.01)
-        .ToAudioBusVolume("Master", 0.8f);
+        .PersistAs("master/volume")
+        .ToRuntime(new GodotAudioBusVolumeBinding("Master", 0.8f), 0.8f);
 
     audio.Map(x => x.Muted)
         .WithUi("Mute", ConfigUiControl.Toggle)
-        .ToAudioBusMute("Master", false);
+        .PersistAs("master/muted")
+        .ToRuntime(new GodotAudioBusMuteBinding("Master", false), false);
+});
+
+services.AddSettings<InputOptions>("input", input =>
+{
+    input.Map(x => x.Jump)
+        .WithUi("Jump", ConfigUiControl.KeyBinding)
+        .PersistAs("jump")
+        .ToRuntime(
+            new GodotInputActionBinding("jump", (long)Key.Space),
+            InputActionBinding.FromKeyCode((long)Key.Space, keyCode => OS.GetKeycodeString((Key)keyCode)),
+            new InputActionBindingConfigValueCodec(keyCode => OS.GetKeycodeString((Key)keyCode)));
 });
 ```
 
 Settings are persisted to `user://settings.cfg` by default. Project settings can be used as defaults, with player changes saved in the settings file.
 
-Use small POCOs with mapped scalar properties. Use `InputActionBinding` for key bindings.
+Use small POCOs with mapped scalar properties. Use an explicit `IConfigValueCodec<TValue>` when a value spans multiple persisted fields, such as `InputActionBinding`.
 
 The settings file uses Godot `ConfigFile` sections, slash paths, and native values:
 

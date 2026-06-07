@@ -15,18 +15,24 @@ public sealed class ConfigStartup : IStartup
         {
             audio.Map(x => x.MasterVolume)
                 .WithUi("Master Volume", ConfigUiControl.Slider, 0, 1, 0.01)
-                .ToAudioBusVolume("Master", 0.8f);
+                .PersistAs("master/volume")
+                .ToRuntime(new GodotAudioBusVolumeBinding("Master", 0.8f), 0.8f);
 
             audio.Map(x => x.Muted)
                 .WithUi("Mute", ConfigUiControl.Toggle)
-                .ToAudioBusMute("Master", false);
+                .PersistAs("master/muted")
+                .ToRuntime(new GodotAudioBusMuteBinding("Master", false), false);
         });
 
         services.AddSettings<InputOptions>("input", input =>
         {
             input.Map(x => x.Jump)
                 .WithUi("Jump", ConfigUiControl.KeyBinding)
-                .ToInputAction("jump", Key.Space);
+                .PersistAs("jump")
+                .ToRuntime(
+                    new GodotInputActionBinding("jump", (long)Key.Space),
+                    InputActionBinding.FromKeyCode((long)Key.Space, keyCode => OS.GetKeycodeString((Key)keyCode)),
+                    new InputActionBindingConfigValueCodec(keyCode => OS.GetKeycodeString((Key)keyCode)));
         });
 
         services.AddSettings<GameplayOptions>("gameplay", gameplay =>
@@ -48,7 +54,10 @@ public sealed class ConfigStartup : IStartup
         {
             project.Map(x => x.GameTitle)
                 .WithUi("Game Title", ConfigUiControl.Text)
-                .ToProjectSettingDefault("application/config/name", "DI Config Example");
+                .PersistAs("application/config/name")
+                .ToRuntime(
+                    new GodotProjectSettingBinding<string>("application/config/name", "DI Config Example"),
+                    "DI Config Example");
         });
     }
 }

@@ -24,23 +24,6 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
 
     public bool TryGet<TValue>(string section, string key, out TValue value)
     {
-        if (typeof(TValue) == typeof(InputActionBinding))
-        {
-            if (!_configFile.HasSectionKey(section, $"{key}/key_code"))
-            {
-                value = default!;
-                return false;
-            }
-
-            var keyCode = Convert.ToInt64(_configFile.GetValue(section, $"{key}/key_code").Obj);
-            value = (TValue)(object)new InputActionBinding
-            {
-                KeyCode = keyCode,
-                DisplayName = keyCode == 0 ? "Unbound" : OS.GetKeycodeString((Key)keyCode),
-            };
-            return true;
-        }
-
         if (!_configFile.HasSectionKey(section, key))
         {
             value = default!;
@@ -64,22 +47,11 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
 
     public void Set<TValue>(string section, string key, TValue value)
     {
-        if (value is InputActionBinding inputAction)
-        {
-            _configFile.SetValue(section, $"{key}/key_code", inputAction.KeyCode);
-            return;
-        }
-
         _configFile.SetValue(section, key, ToGodotValue(value));
     }
 
     public void Remove(string section, string key)
     {
-        if (_configFile.HasSectionKey(section, $"{key}/key_code"))
-        {
-            _configFile.EraseSectionKey(section, $"{key}/key_code");
-        }
-
         if (_configFile.HasSectionKey(section, key))
         {
             _configFile.EraseSectionKey(section, key);
