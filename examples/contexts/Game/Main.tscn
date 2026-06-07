@@ -1,8 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://fxy_di_contexts_main"]
+[gd_scene format=3 uid="uid://d2v8gkre7uw86"]
 
-[ext_resource type="Script" path="res://Game/Main.cs" id="1_main"]
+[ext_resource type="Script" uid="uid://j7ecdon3djtc" path="res://Game/Main.cs" id="1_main"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/TrackContext.tscn" id="2_track"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/ContextDiagnosticsInspector.tscn" id="3_inspector"]
 
-[node name="Main" type="Control"]
+[node name="Main" type="Control" unique_id=1318606806]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -10,3 +12,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
+
+[node name="TrackContext" parent="." unique_id=882538121 instance=ExtResource("2_track")]
+layout_mode = 1
+
+[node name="Inspector" parent="." unique_id=285890981 instance=ExtResource("3_inspector")]
+layout_mode = 1
+anchors_preset = 9

@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Game/Vehicles/VehicleActor.tscn" id="1_actor"]
+
+[node name="Ghost" instance=ExtResource("1_actor") groups=["camera:broadcast", "mode:replay", "race_actor", "recording:best-lap", "track:grand-prix"]]
+StartSlot = 3
+InitialHeading = -0.16

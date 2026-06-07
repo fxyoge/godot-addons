@@ -1,0 +1,60 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://di7oxky6u18j7" path="res://Game/UI/ContextDiagnosticsInspector.cs" id="1_inspector"]
+
+[node name="Inspector" type="PanelContainer"]
+anchors_preset = 13
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 690.0
+offset_bottom = -12.0
+grow_vertical = 2
+script = ExtResource("1_inspector")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Root" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="Margin/Scroll/Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "CONTEXTUAL DI INSPECTOR"
+
+[node name="ContextSummary" type="RichTextLabel" parent="Margin/Scroll/Root"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/normal_font_size = 12
+bbcode_enabled = false
+fit_content = true
+scroll_active = false
+
+[node name="ServiceMatrix" type="GridContainer" parent="Margin/Scroll/Root"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 1
+
+[node name="Details" type="RichTextLabel" parent="Margin/Scroll/Root"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/normal_font_size = 12
+bbcode_enabled = false
+fit_content = true
+scroll_active = false

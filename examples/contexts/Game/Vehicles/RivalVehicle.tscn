@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://3jpx06q0y0hv"]
+
+[ext_resource type="PackedScene" path="res://Game/Vehicles/VehicleActor.tscn" id="1_actor"]
+
+[node name="Rival" unique_id=1559704007 groups=["camera:chase", "entrant:rival", "mode:runtime", "race_actor", "rival:blue", "track:grand-prix"] instance=ExtResource("1_actor")]
+StartSlot = 2

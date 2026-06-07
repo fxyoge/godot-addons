@@ -19,6 +19,9 @@ public sealed class ContextsStartup : IStartup
         services.AddContextualScoped<IRunTelemetry, ReplayRunTelemetry>("mode:replay", "recording:*");
         services.AddContextualScoped<IRunTelemetry, PreviewRunTelemetry>("mode:preview", "vehicle:*");
 
+        // Using contextually scoped services is not recommended for cases where a simple database of Resources
+        // would have sufficed, but these services are provided none-the-less to demonstrate retrieval of
+        // an IEnumerable<> of relevant services.
         services.AddSingleton<ICarModifier, BaseHandlingModifier>();
         services.AddContextualScoped<ICarModifier, GrandPrixSurfaceModifier>("track:grand-prix");
         services.AddContextualScoped<ICarModifier, PlayerPaintModifier>("player:1");

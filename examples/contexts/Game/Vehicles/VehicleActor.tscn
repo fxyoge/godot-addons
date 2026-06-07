@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dut6nid0cb5rh"]
+
+[ext_resource type="Script" uid="uid://bfa2sephqwock" path="res://Game/Vehicles/VehicleActor.cs" id="1_w5xry"]
+
+[node name="VehicleActor" type="Node2D" unique_id=48365721]
+script = ExtResource("1_w5xry")

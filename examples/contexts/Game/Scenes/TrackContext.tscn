@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://dqiy0joqprvoc" path="res://Game/RaceTrackView.cs" id="1_track_view"]
+[ext_resource type="PackedScene" path="res://Game/Vehicles/PlayerVehicle.tscn" id="2_player"]
+[ext_resource type="PackedScene" uid="uid://3jpx06q0y0hv" path="res://Game/Vehicles/RivalVehicle.tscn" id="3_rival"]
+[ext_resource type="PackedScene" path="res://Game/Vehicles/GhostVehicle.tscn" id="4_ghost"]
+[ext_resource type="PackedScene" path="res://Game/Vehicles/GarageVehicle.tscn" id="5_garage"]
+
+[node name="TrackContext" type="Control" groups=["track:grand-prix"]]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TrackView" type="Control" parent="." groups=["track:grand-prix"]]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_track_view")
+
+[node name="Player" parent="TrackView" instance=ExtResource("2_player")]
+
+[node name="Rival" parent="TrackView" instance=ExtResource("3_rival")]
+
+[node name="Ghost" parent="TrackView" instance=ExtResource("4_ghost")]
+
+[node name="Garage" parent="TrackView" instance=ExtResource("5_garage")]
