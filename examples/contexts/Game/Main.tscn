@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://d2v8gkre7uw86"]
 
 [ext_resource type="Script" uid="uid://j7ecdon3djtc" path="res://Game/Main.cs" id="1_main"]
-[ext_resource type="PackedScene" path="res://Game/Scenes/TrackContext.tscn" id="2_track"]
-[ext_resource type="PackedScene" path="res://Game/Scenes/ContextDiagnosticsInspector.tscn" id="3_inspector"]
+[ext_resource type="PackedScene" path="res://Game/TrackContext.tscn" id="2_track"]
+[ext_resource type="PackedScene" path="res://Game/UI/ContextDiagnosticsInspector.tscn" id="3_inspector"]
 
 [node name="Main" type="Control" unique_id=1318606806]
 layout_mode = 3
@@ -18,4 +18,11 @@ layout_mode = 1
 
 [node name="Inspector" parent="." unique_id=285890981 instance=ExtResource("3_inspector")]
 layout_mode = 1
-anchors_preset = 9
+anchors_preset = 13
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 690.0
+offset_bottom = -12.0
+grow_vertical = 2

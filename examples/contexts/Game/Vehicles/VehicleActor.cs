@@ -16,6 +16,7 @@ public partial class VehicleActor : Node2D
     private VehicleController? _controller;
     private VehicleHudModel? _hud;
     private ITrackSession? _track;
+    private Label? _nameLabel;
     private CameraView _view = new(Vector2.Zero, 1f);
 
     public VehicleState State { get; } = new();
@@ -30,6 +31,10 @@ public partial class VehicleActor : Node2D
 
     public override void _Ready()
     {
+        _nameLabel = GetNode<Label>("NameLabel");
+        _nameLabel.Text = DisplayName;
+        _nameLabel.TopLevel = true;
+
         _track = this.GetRequiredService<ITrackSession>();
         State.Position = UseGarageStart
             ? _track.Course.GaragePosition
@@ -56,6 +61,13 @@ public partial class VehicleActor : Node2D
         Position = viewportSize * 0.5f + (State.Position - view.Center) * view.Zoom;
         Rotation = State.Heading;
         Scale = Vector2.One * view.Zoom;
+
+        if (_nameLabel is not null)
+        {
+            _nameLabel.GlobalPosition = GlobalPosition + new Vector2(-30f, -54f) * view.Zoom;
+            _nameLabel.Scale = Vector2.One;
+        }
+
         QueueRedraw();
     }
 

@@ -14,6 +14,7 @@ public partial class Main : Control
     {
         _trackView = GetNode<RaceTrackView>("TrackContext/TrackView");
         _inspector = GetNode<ContextDiagnosticsInspector>("Inspector");
+        ConfigureInspectorPanel(_inspector);
 
         foreach (var node in GetTree().GetNodesInGroup(VehicleActor.SceneGroup))
         {
@@ -47,5 +48,17 @@ public partial class Main : Control
         }
 
         _trackView?.SetView(_view);
+    }
+
+    private static void ConfigureInspectorPanel(Control inspector)
+    {
+        inspector.AnchorLeft = 0f;
+        inspector.AnchorTop = 0f;
+        inspector.AnchorRight = 0f;
+        inspector.AnchorBottom = 1f;
+        inspector.OffsetLeft = 12f;
+        inspector.OffsetTop = 12f;
+        inspector.OffsetRight = 690f;
+        inspector.OffsetBottom = -12f;
     }
 }
