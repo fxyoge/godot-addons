@@ -53,9 +53,28 @@ services.AddWritableOptions<AudioOptions>("audio", audio =>
 });
 ```
 
-Settings are persisted to `user://settings.cfg` by default. Project settings are read as defaults and user overrides are written to the user overlay, not to `project.godot`.
+Settings are persisted to `user://settings.cfg` by default. Project settings can be used as defaults, with player changes saved in the settings file.
 
-Options should be small JSON-serializable POCOs. For Godot input mappings, use `InputActionBinding` instead of storing raw `InputEvent` instances on options.
+Use small POCOs with mapped scalar properties. Use `InputActionBinding` for key bindings.
+
+The settings file uses Godot `ConfigFile` sections, slash paths, and native values:
+
+```ini
+[audio]
+
+master/volume=0.8
+master/muted=false
+
+[input]
+
+jump/key_code=74
+
+[gameplay]
+
+difficulty="Hard"
+show_damage_numbers=true
+camera_sensitivity=0.35
+```
 
 ## Consume
 

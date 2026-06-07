@@ -214,8 +214,6 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
 
     public void Apply(TValue value)
     {
-        // V1 treats ProjectSettings as a default source. User overrides are exposed
-        // through typed options but are not written back to project.godot.
     }
 
     public ConfigEntryDescriptor Describe(string section, string key, ConfigUiHint? uiHint)

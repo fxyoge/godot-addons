@@ -1,3 +1,4 @@
+using System;
 using Godot;
 
 namespace Fxyoge.DependencyInjection.Configuration;
@@ -10,7 +11,7 @@ public static class GodotMappingExtensions
         Key fallbackKey)
         where TOptions : class, new()
     {
-        builder.ToRuntime(new GodotInputActionBinding(actionName, (long)fallbackKey), new InputActionBinding
+        builder.PersistAs(actionName).ToRuntime(new GodotInputActionBinding(actionName, (long)fallbackKey), new InputActionBinding
         {
             KeyCode = (long)fallbackKey,
             DisplayName = OS.GetKeycodeString(fallbackKey),
@@ -23,7 +24,8 @@ public static class GodotMappingExtensions
         float fallbackLinearVolume)
         where TOptions : class, new()
     {
-        builder.ToRuntime(new GodotAudioBusVolumeBinding(busName, fallbackLinearVolume), fallbackLinearVolume);
+        builder.PersistAs($"{ToSnakeCase(busName)}/volume")
+            .ToRuntime(new GodotAudioBusVolumeBinding(busName, fallbackLinearVolume), fallbackLinearVolume);
     }
 
     public static void ToAudioBusMute<TOptions>(
@@ -32,7 +34,8 @@ public static class GodotMappingExtensions
         bool fallbackMuted)
         where TOptions : class, new()
     {
-        builder.ToRuntime(new GodotAudioBusMuteBinding(busName, fallbackMuted), fallbackMuted);
+        builder.PersistAs($"{ToSnakeCase(busName)}/muted")
+            .ToRuntime(new GodotAudioBusMuteBinding(busName, fallbackMuted), fallbackMuted);
     }
 
     public static void ToProjectSettingDefault<TOptions, TValue>(
@@ -41,6 +44,38 @@ public static class GodotMappingExtensions
         TValue fallbackDefault)
         where TOptions : class, new()
     {
-        builder.ToRuntime(new GodotProjectSettingBinding<TValue>(settingPath, fallbackDefault), fallbackDefault);
+        builder.PersistAs(settingPath)
+            .ToRuntime(new GodotProjectSettingBinding<TValue>(settingPath, fallbackDefault), fallbackDefault);
+    }
+
+    private static string ToSnakeCase(string value)
+    {
+        Span<char> buffer = stackalloc char[value.Length * 2];
+        var length = 0;
+
+        for (var i = 0; i < value.Length; i++)
+        {
+            var current = value[i];
+            if (char.IsWhiteSpace(current) || current == '-')
+            {
+                buffer[length++] = '_';
+                continue;
+            }
+
+            if (char.IsUpper(current))
+            {
+                if (i > 0 && length > 0 && buffer[length - 1] != '_' && !char.IsUpper(value[i - 1]))
+                {
+                    buffer[length++] = '_';
+                }
+
+                buffer[length++] = char.ToLowerInvariant(current);
+                continue;
+            }
+
+            buffer[length++] = current;
+        }
+
+        return new string(buffer[..length]);
     }
 }

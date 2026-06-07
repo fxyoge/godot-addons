@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 
 namespace Fxyoge.DependencyInjection.Configuration;
 
@@ -39,10 +40,40 @@ public sealed class WritableOptionsMappingBuilder<TOptions>
 
         return new OptionPropertyMappingBuilder<TOptions, TValue>(
             Section,
-            propertyInfo.Name,
+            ToSnakeCase(propertyInfo.Name),
             getter,
             Setter,
             mapping => _mappings.Add(mapping));
+    }
+
+    private static string ToSnakeCase(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        var builder = new StringBuilder(value.Length + 4);
+
+        for (var i = 0; i < value.Length; i++)
+        {
+            var current = value[i];
+            if (char.IsUpper(current))
+            {
+                if (i > 0 && value[i - 1] != '_' && !char.IsUpper(value[i - 1]))
+                {
+                    builder.Append('_');
+                }
+
+                builder.Append(char.ToLowerInvariant(current));
+            }
+            else
+            {
+                builder.Append(current);
+            }
+        }
+
+        return builder.ToString();
     }
 }
 
@@ -50,7 +81,7 @@ public sealed class OptionPropertyMappingBuilder<TOptions, TValue>
     where TOptions : class, new()
 {
     private readonly string _section;
-    private readonly string _key;
+    private string _key;
     private readonly Func<TOptions, TValue> _getValue;
     private readonly Action<TOptions, TValue> _setValue;
     private readonly Action<IOptionPropertyMapping<TOptions>> _addMapping;
@@ -78,6 +109,12 @@ public sealed class OptionPropertyMappingBuilder<TOptions, TValue>
         double? step = null)
     {
         _uiHint = new ConfigUiHint(label, control, min, max, step);
+        return this;
+    }
+
+    public OptionPropertyMappingBuilder<TOptions, TValue> PersistAs(string key)
+    {
+        _key = key;
         return this;
     }
 

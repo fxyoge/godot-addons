@@ -35,7 +35,7 @@ public sealed class WritableOptionsMonitorTests
 
         await monitor.Update(options => options.Volume = 0.25f);
 
-        Assert.True(store.TryGet<float>("settings", nameof(TestOptions.Volume), out var stored));
+        Assert.True(store.TryGet<float>("settings", "volume", out var stored));
         Assert.Equal(0.25f, stored);
         Assert.Equal(0.25f, runtime.AppliedValue);
         Assert.Equal(1, store.SaveCount);
@@ -75,9 +75,44 @@ public sealed class WritableOptionsMonitorTests
 
         await monitor.Reset();
 
-        Assert.False(store.TryGet<float>("settings", nameof(TestOptions.Volume), out _));
+        Assert.False(store.TryGet<float>("settings", "volume", out _));
         Assert.Equal(0.9f, monitor.CurrentValue.Volume);
         Assert.Equal(0.9f, runtime.AppliedValue);
+    }
+
+    [Fact]
+    public async Task InputActionBindingsUseActionKeyCodePath()
+    {
+        var store = new MemoryConfigOverlayStore();
+        var services = new ServiceCollection();
+        var runtime = new TestRuntimeBinding<InputActionBinding>(new InputActionBinding
+        {
+            KeyCode = 32,
+            DisplayName = "Space",
+        });
+
+        services.AddSingleton<IConfigOverlayStore>(store);
+        services.AddWritableOptions<InputTestOptions>("input", input =>
+        {
+            input.Map(x => x.Jump)
+                .PersistAs("jump")
+                .ToRuntime(runtime, new InputActionBinding { KeyCode = 32, DisplayName = "Space" });
+        });
+
+        var monitor = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        }).GetRequiredService<IWritableOptionsMonitor<InputTestOptions>>();
+
+        await monitor.Update(options => options.Jump = new InputActionBinding
+        {
+            KeyCode = 74,
+            DisplayName = "J",
+        });
+
+        Assert.True(store.TryGet<InputActionBinding>("input", "jump", out var stored));
+        Assert.Equal(74, stored.KeyCode);
     }
 
     private static ServiceProvider CreateServices(out MemoryConfigOverlayStore store)
@@ -119,6 +154,11 @@ public sealed class WritableOptionsMonitorTests
         public bool Muted { get; set; }
 
         public string Difficulty { get; set; } = string.Empty;
+    }
+
+    private sealed class InputTestOptions
+    {
+        public InputActionBinding Jump { get; set; } = new();
     }
 
     private sealed class TestRuntimeBinding<TValue> : IRuntimeConfigBinding<TValue>
