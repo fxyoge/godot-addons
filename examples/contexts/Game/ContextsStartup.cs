@@ -7,20 +7,30 @@ public sealed class ContextsStartup : IStartup
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton<ISettingsStore, ProjectSettingsStore>();
-        services.AddSingleton<ISettingsStore, UserSettingsStore>();
-        services.AddContextualScoped<ISettingsStore, PreviewSettingsStore>("preview");
-        services.AddContextualScoped<ISettingsStore, ReplaySettingsStore>("replay");
-        services.AddTransient<SettingsManager>();
+        services.AddContextualScoped<ITrackSession, TrackSession>("track:grand-prix");
+        services.AddContextualScoped<ITrackSurface, ForestTrackSurface>("track:grand-prix");
 
-        services.AddContextualScoped<ILevelSession, LevelSession>("level:*");
-        services.AddContextualScoped<IPlayerProfile, PlayerProfile>("level:*", "player:*");
+        services.AddContextualScoped<IInputSource, PlayerOneInputSource>("mode:runtime", "player:1");
+        services.AddContextualScoped<IInputSource, RivalInputSource>("mode:runtime", "rival:*");
+        services.AddContextualScoped<IInputSource, ReplayInputSource>("mode:replay", "recording:*");
+        services.AddContextualScoped<IInputSource, PreviewSpinInputSource>("mode:preview", "vehicle:*");
 
-        services.AddContextualScoped<IControlMode, RuntimeControlMode>("runtime");
-        services.AddContextualScoped<IControlMode, PreviewControlMode>("preview");
-        services.AddContextualScoped<IControlMode, ReplayControlMode>("replay");
+        services.AddContextualScoped<IRunTelemetry, PlayerRunTelemetry>("track:grand-prix", "entrant:*");
+        services.AddContextualScoped<IRunTelemetry, ReplayRunTelemetry>("mode:replay", "recording:*");
+        services.AddContextualScoped<IRunTelemetry, PreviewRunTelemetry>("mode:preview", "vehicle:*");
 
-        services.AddContextualScoped<IDebugOverlayModel, DebugOverlayModel>("preview");
-        services.AddContextualScoped<ICameraRig, PreviewCameraRig>("preview", "level:*");
+        services.AddSingleton<ICarModifier, BaseHandlingModifier>();
+        services.AddContextualScoped<ICarModifier, GrandPrixSurfaceModifier>("track:grand-prix");
+        services.AddContextualScoped<ICarModifier, PlayerPaintModifier>("player:1");
+        services.AddContextualScoped<ICarModifier, RivalPaintModifier>("rival:*");
+        services.AddContextualScoped<ICarModifier, ReplayGhostModifier>("mode:replay");
+        services.AddContextualScoped<ICarModifier, PreviewShowroomModifier>("mode:preview", "vehicle:*");
+
+        services.AddContextualScoped<ICameraRig, RuntimeCameraRig>("mode:runtime", "camera:chase");
+        services.AddContextualScoped<ICameraRig, ReplayCameraRig>("mode:replay", "camera:broadcast");
+        services.AddContextualScoped<ICameraRig, PreviewCameraRig>("mode:preview", "camera:garage");
+
+        services.AddTransient<VehicleController>();
+        services.AddTransient<VehicleHudModel>();
     }
 }
