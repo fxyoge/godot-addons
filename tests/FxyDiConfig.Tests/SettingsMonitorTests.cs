@@ -100,6 +100,43 @@ public sealed class SettingsMonitorTests
     }
 
     [Fact]
+    public async Task TransactionalMonitorTracksLiveChangesWhenDraftIsClean()
+    {
+        var services = CreateServices(store: out var store);
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+        var transaction = new SettingsTransaction(store);
+        var transactional = new TransactionalSettingsMonitor<TestOptions>(
+            services.GetRequiredService<SettingsMonitor<TestOptions>>(),
+            transaction,
+            services.GetServices<ISettingsRegistration<TestOptions>>());
+
+        await transactional.Update(options => options.Volume = 0.5f);
+        transaction.Abandon();
+        await monitor.Update(options => options.Volume = 0.25f);
+
+        Assert.Equal(0.25f, transactional.CurrentValue.Volume);
+        Assert.False(transaction.HasChanges);
+    }
+
+    [Fact]
+    public async Task TransactionalMonitorIgnoresLiveChangesWhileDraftIsDirty()
+    {
+        var services = CreateServices(store: out var store);
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+        var transaction = new SettingsTransaction(store);
+        var transactional = new TransactionalSettingsMonitor<TestOptions>(
+            services.GetRequiredService<SettingsMonitor<TestOptions>>(),
+            transaction,
+            services.GetServices<ISettingsRegistration<TestOptions>>());
+
+        await transactional.Update(options => options.Volume = 0.5f);
+        await monitor.Update(options => options.Volume = 0.25f);
+
+        Assert.Equal(0.5f, transactional.CurrentValue.Volume);
+        Assert.True(transaction.HasChanges);
+    }
+
+    [Fact]
     public async Task ResetRemovesOverlayAndReloadsRuntimeDefaults()
     {
         var services = CreateServices(store: out var store);

@@ -8,12 +8,14 @@ namespace Fxyoge.DependencyInjection.Configuration;
 
 public sealed class TransactionalSettingsMonitor<TOptions> :
     ISettingsMonitor<TOptions>,
-    ITransactionalSettingsParticipant
+    ITransactionalSettingsParticipant,
+    IDisposable
     where TOptions : class, new()
 {
     private readonly SettingsMonitor<TOptions> _liveMonitor;
     private readonly IReadOnlyList<IOptionPropertyMapping<TOptions>> _mappings;
     private readonly SettingsTransaction _transaction;
+    private readonly IDisposable _liveSubscription;
     private readonly object _sync = new();
     private readonly List<Action<TOptions, string>> _listeners = new();
     private TOptions _currentValue;
@@ -35,6 +37,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         _transaction = settingsTransaction;
         _mappings = registrations.SelectMany(registration => registration.Mappings).ToArray();
         _currentValue = CloneMapped(_liveMonitor.CurrentValue);
+        _liveSubscription = _liveMonitor.OnChange(SyncFromLive);
         _transaction.Enlist(this);
     }
 
@@ -141,6 +144,24 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
     public void Abandon()
     {
         Publish(_liveMonitor.CurrentValue, pendingReset: false, hasValueChanges: false);
+    }
+
+    public void Dispose()
+    {
+        _liveSubscription.Dispose();
+    }
+
+    private void SyncFromLive(TOptions value)
+    {
+        lock (_sync)
+        {
+            if (_pendingReset || _hasValueChanges)
+            {
+                return;
+            }
+        }
+
+        Publish(value, pendingReset: false, hasValueChanges: false);
     }
 
     private void Publish(TOptions value, bool pendingReset, bool hasValueChanges)

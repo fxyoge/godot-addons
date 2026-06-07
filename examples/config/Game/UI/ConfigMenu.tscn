@@ -1,6 +1,6 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://cw7lb6jt53jko"]
 
-[ext_resource type="Script" path="res://Game/UI/ConfigMenu.cs" id="1_script"]
+[ext_resource type="Script" uid="uid://cyphggoglxt56" path="res://Game/UI/ConfigMenu.cs" id="1_script"]
 [ext_resource type="PackedScene" path="res://Game/UI/DifficultyControl.tscn" id="2_difficulty"]
 [ext_resource type="PackedScene" path="res://Game/UI/SpawnRateControl.tscn" id="3_spawn"]
 
@@ -16,7 +16,7 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[node name="ConfigMenu" type="PanelContainer" groups=["settings-transaction:config-menu"]]
+[node name="ConfigMenu" type="PanelContainer" unique_id=1688590116 groups=["settings-transaction:config-menu"]]
 visible = false
 offset_left = -430.0
 offset_top = 62.0
@@ -25,58 +25,58 @@ offset_bottom = 298.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_config_panel")
 script = ExtResource("1_script")
 
-[node name="PanelMargin" type="MarginContainer" parent="."]
+[node name="PanelMargin" type="MarginContainer" parent="." unique_id=1714000118]
 layout_mode = 2
 theme_override_constants/margin_left = 18
 theme_override_constants/margin_top = 14
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 18
 
-[node name="PanelRoot" type="VBoxContainer" parent="PanelMargin"]
+[node name="PanelRoot" type="VBoxContainer" parent="PanelMargin" unique_id=1275412209]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Header" type="HBoxContainer" parent="PanelMargin/PanelRoot"]
+[node name="Header" type="HBoxContainer" parent="PanelMargin/PanelRoot" unique_id=1614363377]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="TitleLabel" type="Label" parent="PanelMargin/PanelRoot/Header"]
+[node name="TitleLabel" type="Label" parent="PanelMargin/PanelRoot/Header" unique_id=1226102759]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 22
 text = "Config"
 
-[node name="CloseButton" type="Button" parent="PanelMargin/PanelRoot/Header"]
+[node name="CloseButton" type="Button" parent="PanelMargin/PanelRoot/Header" unique_id=1429856144]
 custom_minimum_size = Vector2(34, 30)
 layout_mode = 2
 text = "X"
 
-[node name="DifficultyControl" parent="PanelMargin/PanelRoot" groups=["settings-transaction:config-menu"] instance=ExtResource("2_difficulty")]
+[node name="DifficultyControl" parent="PanelMargin/PanelRoot" unique_id=1172624520 groups=["settings-transaction:config-menu"] instance=ExtResource("2_difficulty")]
 layout_mode = 2
 
-[node name="SpawnRateControl" parent="PanelMargin/PanelRoot" groups=["settings-transaction:config-menu"] instance=ExtResource("3_spawn")]
+[node name="SpawnRateControl" parent="PanelMargin/PanelRoot" unique_id=806412510 groups=["settings-transaction:config-menu"] instance=ExtResource("3_spawn")]
 layout_mode = 2
 
-[node name="Footer" type="HBoxContainer" parent="PanelMargin/PanelRoot"]
+[node name="Footer" type="HBoxContainer" parent="PanelMargin/PanelRoot" unique_id=1917213973]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="ResetButton" type="Button" parent="PanelMargin/PanelRoot/Footer"]
+[node name="ResetButton" type="Button" parent="PanelMargin/PanelRoot/Footer" unique_id=753735250]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Reset"
+text = "Reset to Defaults"
 
-[node name="FilesButton" type="Button" parent="PanelMargin/PanelRoot/Footer"]
+[node name="FilesButton" type="Button" parent="PanelMargin/PanelRoot/Footer" unique_id=1234191330]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Files"
 
-[node name="CancelButton" type="Button" parent="PanelMargin/PanelRoot/Footer"]
+[node name="CancelButton" type="Button" parent="PanelMargin/PanelRoot/Footer" unique_id=1587056]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Cancel"
 
-[node name="SaveButton" type="Button" parent="PanelMargin/PanelRoot/Footer"]
+[node name="SaveButton" type="Button" parent="PanelMargin/PanelRoot/Footer" unique_id=402336498]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Save"
