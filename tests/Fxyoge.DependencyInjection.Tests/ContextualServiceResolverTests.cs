@@ -321,6 +321,37 @@ public sealed class ContextualServiceResolverTests
     }
 
     [Fact]
+    public void ContextualServiceQueryReturnsAllMatchingContextualRegistrations()
+    {
+        using var harness = new Harness(services =>
+        {
+            services.AddSingleton<ISettingsStore, ProjectSettingsStore>();
+            services.AddContextualScoped<ISettingsStore, PreviewSettingsStore>("preview");
+            services.AddContextualTransient<ISettingsStore, LevelSettingsStore>("level:*");
+            services.AddContextualScoped<IAssetLoader, RuntimeAssetLoader>("runtime");
+        });
+
+        var matches = harness.GetContextualServices("preview", "level:forest");
+
+        Assert.Collection(
+            matches,
+            match =>
+            {
+                Assert.Equal(typeof(ISettingsStore), match.ServiceType);
+                Assert.Equal(typeof(LevelSettingsStore), match.ImplementationType);
+                Assert.Equal(ServiceLifetime.Transient, match.Lifetime);
+                Assert.Equal("level:*", match.Rule);
+            },
+            match =>
+            {
+                Assert.Equal(typeof(ISettingsStore), match.ServiceType);
+                Assert.Equal(typeof(PreviewSettingsStore), match.ImplementationType);
+                Assert.Equal(ServiceLifetime.Scoped, match.Lifetime);
+                Assert.Equal("preview", match.Rule);
+            });
+    }
+
+    [Fact]
     public void SingleContextualResolutionFallsBackToNormalService()
     {
         using var harness = new Harness(services =>
@@ -683,6 +714,9 @@ public sealed class ContextualServiceResolverTests
 
         public ServiceResolutionDiagnosticsSnapshot CreateDiagnosticsSnapshot()
             => _resolver.CreateDiagnosticsSnapshot();
+
+        public IReadOnlyList<ContextualServiceMatch> GetContextualServices(params string[] groups)
+            => _resolver.GetContextualServices(new ContextualResolutionContext(groups));
 
         public void Dispose()
         {

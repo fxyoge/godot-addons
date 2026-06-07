@@ -1,10 +1,9 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dmkwtb4nraocp"]
 
 [ext_resource type="Script" uid="uid://di7oxky6u18j7" path="res://Game/UI/ContextDiagnosticsInspector.cs" id="1_inspector"]
 
-[node name="Inspector" type="PanelContainer"]
-anchors_preset = 13
-anchor_right = 0.0
+[node name="Inspector" type="PanelContainer" unique_id=988262938]
+anchors_preset = 9
 anchor_bottom = 1.0
 offset_left = 12.0
 offset_top = 12.0
@@ -13,48 +12,95 @@ offset_bottom = -12.0
 grow_vertical = 2
 script = ExtResource("1_inspector")
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="Margin" type="MarginContainer" parent="." unique_id=11938810]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 10
 
-[node name="Scroll" type="ScrollContainer" parent="Margin"]
+[node name="Root" type="VBoxContainer" parent="Margin" unique_id=405532295]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="Root" type="VBoxContainer" parent="Margin/Scroll"]
+[node name="Tabs" type="TabContainer" parent="Margin/Root" unique_id=1629445945]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Service Matrix" type="ScrollContainer" parent="Margin/Root/Tabs" unique_id=1516208596]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+metadata/_tab_index = 0
+
+[node name="SceneRoot" type="VBoxContainer" parent="Margin/Root/Tabs/Service Matrix" unique_id=1069507176]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Title" type="Label" parent="Margin/Scroll/Root"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 16
-text = "CONTEXTUAL DI INSPECTOR"
-
-[node name="ContextSummary" type="RichTextLabel" parent="Margin/Scroll/Root"]
+[node name="ContextSummary" type="RichTextLabel" parent="Margin/Root/Tabs/Service Matrix/SceneRoot" unique_id=1097852971]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/normal_font_size = 12
-bbcode_enabled = false
 fit_content = true
 scroll_active = false
 
-[node name="ServiceMatrix" type="GridContainer" parent="Margin/Scroll/Root"]
+[node name="ServiceMatrix" type="GridContainer" parent="Margin/Root/Tabs/Service Matrix/SceneRoot" unique_id=121885029]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-columns = 1
 
-[node name="Details" type="RichTextLabel" parent="Margin/Scroll/Root"]
+[node name="Details" type="RichTextLabel" parent="Margin/Root/Tabs/Service Matrix/SceneRoot" unique_id=1176091805]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/normal_font_size = 12
-bbcode_enabled = false
+fit_content = true
+scroll_active = false
+
+[node name="Contexts" type="ScrollContainer" parent="Margin/Root/Tabs" unique_id=990305862]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+metadata/_tab_index = 1
+
+[node name="ContextsRoot" type="VBoxContainer" parent="Margin/Root/Tabs/Contexts" unique_id=675722463]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ContextToggles" type="GridContainer" parent="Margin/Root/Tabs/Contexts/ContextsRoot" unique_id=86536023]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+
+[node name="ContextServices" type="RichTextLabel" parent="Margin/Root/Tabs/Contexts/ContextsRoot" unique_id=94353612]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/normal_font_size = 12
+fit_content = true
+scroll_active = false
+
+[node name="Service Inventory" type="ScrollContainer" parent="Margin/Root/Tabs" unique_id=1861639552]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+metadata/_tab_index = 2
+
+[node name="InventoryRoot" type="VBoxContainer" parent="Margin/Root/Tabs/Service Inventory" unique_id=174431738]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ServiceInventory" type="RichTextLabel" parent="Margin/Root/Tabs/Service Inventory/InventoryRoot" unique_id=215140176]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/normal_font_size = 12
 fit_content = true
 scroll_active = false

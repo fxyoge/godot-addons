@@ -52,6 +52,12 @@ public partial class GameServices : Node
     public ServiceResolutionDiagnosticsSnapshot CreateDiagnosticsSnapshot()
         => ContextualResolver.CreateDiagnosticsSnapshot();
 
+    public ImmutableArray<ContextualServiceMatch> GetContextualServices(IEnumerable<string> groups)
+    {
+        ArgumentNullException.ThrowIfNull(groups);
+        return ContextualResolver.GetContextualServices(new ContextualResolutionContext(groups));
+    }
+
     public void ClearDiagnostics() => ContextualResolver.ClearDiagnostics();
 
     public override void _ExitTree()

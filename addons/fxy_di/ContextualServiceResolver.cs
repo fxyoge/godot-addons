@@ -44,6 +44,23 @@ internal sealed class ContextualServiceResolver : IDisposable
     public ServiceResolutionDiagnosticsSnapshot CreateDiagnosticsSnapshot()
         => _diagnostics.CreateSnapshot();
 
+    public ImmutableArray<ContextualServiceMatch> GetContextualServices(ContextualResolutionContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        return _contextualRegistrations
+            .Where(registration => registration.Rule.Match(context.Groups) is not null)
+            .Select(registration => new ContextualServiceMatch(
+                registration.ServiceType,
+                registration.ImplementationType,
+                registration.Lifetime,
+                registration.Rule.ToString()))
+            .OrderBy(match => match.ServiceType.Name, StringComparer.Ordinal)
+            .ThenBy(match => match.ImplementationType.Name, StringComparer.Ordinal)
+            .ThenBy(match => match.Rule, StringComparer.Ordinal)
+            .ToImmutableArray();
+    }
+
     public void ClearDiagnostics() => _diagnostics.Clear();
 
     public void DisposeContext(ContextualResolutionContext context)

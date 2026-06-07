@@ -11,10 +11,15 @@ namespace ContextsExample.Game;
 public partial class ContextDiagnosticsInspector : PanelContainer
 {
     private readonly List<VehicleActor> _actors = new();
+    private readonly HashSet<string> _selectedContextGroups = new(StringComparer.Ordinal);
     private RichTextLabel? _contextSummary;
     private GridContainer? _matrix;
     private RichTextLabel? _details;
+    private GridContainer? _contextToggles;
+    private RichTextLabel? _contextServices;
+    private RichTextLabel? _serviceInventory;
     private ServiceResolutionDiagnosticsSnapshot? _diagnostics;
+    private ImmutableArray<string> _availableContextGroups = ImmutableArray<string>.Empty;
     private string _selectedActorName = "Player";
     private Type _selectedServiceType = typeof(VehicleController);
 
@@ -23,6 +28,9 @@ public partial class ContextDiagnosticsInspector : PanelContainer
         _contextSummary = GetNode<RichTextLabel>("%ContextSummary");
         _matrix = GetNode<GridContainer>("%ServiceMatrix");
         _details = GetNode<RichTextLabel>("%Details");
+        _contextToggles = GetNode<GridContainer>("%ContextToggles");
+        _contextServices = GetNode<RichTextLabel>("%ContextServices");
+        _serviceInventory = GetNode<RichTextLabel>("%ServiceInventory");
     }
 
     public void Capture(IEnumerable<VehicleActor> actors)
@@ -35,13 +43,20 @@ public partial class ContextDiagnosticsInspector : PanelContainer
             _selectedActorName = _actors[0].DisplayName;
         }
 
+        RebuildAvailableContextGroups();
         CaptureDiagnostics();
         Refresh();
     }
 
     public void Refresh()
     {
-        if (_contextSummary is null || _matrix is null || _details is null || _diagnostics is null)
+        if (_contextSummary is null
+            || _matrix is null
+            || _details is null
+            || _contextToggles is null
+            || _contextServices is null
+            || _serviceInventory is null
+            || _diagnostics is null)
         {
             return;
         }
@@ -49,6 +64,9 @@ public partial class ContextDiagnosticsInspector : PanelContainer
         _contextSummary.Text = BuildContextSummaryText();
         RebuildServiceMatrix(_diagnostics);
         _details.Text = BuildDetailsText(_diagnostics);
+        RebuildContextToggles();
+        _contextServices.Text = BuildContextServicesText();
+        _serviceInventory.Text = BuildServiceInventoryText(_diagnostics);
     }
 
     private void CaptureDiagnostics()
@@ -105,6 +123,44 @@ public partial class ContextDiagnosticsInspector : PanelContainer
         }
     }
 
+    private void RebuildContextToggles()
+    {
+        if (_contextToggles is null)
+        {
+            return;
+        }
+
+        ClearChildren(_contextToggles);
+        _contextToggles.Columns = 3;
+
+        foreach (var group in _availableContextGroups)
+        {
+            var button = new Button
+            {
+                Text = group,
+                ToggleMode = true,
+                ButtonPressed = _selectedContextGroups.Contains(group),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                TooltipText = group,
+            };
+            button.AddThemeFontSizeOverride("font_size", 11);
+            button.Pressed += () =>
+            {
+                if (button.ButtonPressed)
+                {
+                    _selectedContextGroups.Add(group);
+                }
+                else
+                {
+                    _selectedContextGroups.Remove(group);
+                }
+
+                Refresh();
+            };
+            _contextToggles.AddChild(button);
+        }
+    }
+
     private string BuildDetailsText(ServiceResolutionDiagnosticsSnapshot diagnostics)
     {
         if (_actors.Count == 0)
@@ -151,8 +207,34 @@ public partial class ContextDiagnosticsInspector : PanelContainer
             text.AppendLine("  no contextual registrations for this service type");
         }
 
-        text.AppendLine();
-        text.AppendLine("INSTANCE LEDGER");
+        return text.ToString();
+    }
+
+    private string BuildContextServicesText()
+    {
+        var matches = GetTree()
+            .Root
+            .GetNode<GameServices>("GameServices")
+            .GetContextualServices(GetSelectedContextGroups());
+        var text = new StringBuilder();
+
+        if (matches.Length == 0)
+        {
+            return "No contextual services match.";
+        }
+
+        foreach (var match in matches)
+        {
+            text.AppendLine(
+                $"{ShortType(match.ServiceType)} -> {ShortType(match.ImplementationType)} ({match.Lifetime}, rule={match.Rule})");
+        }
+
+        return text.ToString();
+    }
+
+    private static string BuildServiceInventoryText(ServiceResolutionDiagnosticsSnapshot diagnostics)
+    {
+        var text = new StringBuilder();
         foreach (var instance in diagnostics.Instances
             .OrderBy(instance => instance.Source)
             .ThenBy(instance => instance.Partition ?? "")
@@ -234,9 +316,28 @@ public partial class ContextDiagnosticsInspector : PanelContainer
         Type serviceType)
     {
         var groups = GetResolutionGroups(actor).OrderBy(group => group).ToImmutableArray();
+        return FindTrace(diagnostics, groups, serviceType);
+    }
+
+    private static ServiceResolutionTrace? FindTrace(
+        ServiceResolutionDiagnosticsSnapshot diagnostics,
+        ImmutableArray<string> groups,
+        Type serviceType)
+    {
         return diagnostics.Traces
             .LastOrDefault(trace => trace.ServiceType == serviceType
                 && trace.ContextGroups.SequenceEqual(groups));
+    }
+
+    private void RebuildAvailableContextGroups()
+    {
+        _availableContextGroups = _actors
+            .SelectMany(GetDisplayGroups)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToImmutableArray();
+
+        _selectedContextGroups.RemoveWhere(group => !_availableContextGroups.Contains(group));
     }
 
     private static string[] GetDisplayGroups(Node node)
@@ -252,6 +353,11 @@ public partial class ContextDiagnosticsInspector : PanelContainer
             .Where(group => !group.StartsWith("_"))
             .OrderBy(group => group)
             .ToArray();
+
+    private ImmutableArray<string> GetSelectedContextGroups()
+        => _selectedContextGroups
+            .Order(StringComparer.Ordinal)
+            .ToImmutableArray();
 
     private static string DescribeCell(ServiceResolutionTrace? trace)
         => trace is null ? "no trace" : DescribeNodeResult(trace.Root);
