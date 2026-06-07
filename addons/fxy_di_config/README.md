@@ -56,19 +56,23 @@ services.AddSettings<AudioOptions>("audio", audio =>
 
 services.AddSettings<InputOptions>("input", input =>
 {
+    var defaultJump = InputActionBindings.FromKeyCode(
+        (long)Key.Space,
+        keyCode => OS.GetKeycodeString((Key)keyCode));
+
     input.Map(x => x.Jump)
         .WithUi("Jump", ConfigUiControl.KeyBinding)
         .PersistAs("jump")
         .ToRuntime(
-            new GodotInputActionBinding("jump", (long)Key.Space),
-            InputActionBinding.FromKeyCode((long)Key.Space, keyCode => OS.GetKeycodeString((Key)keyCode)),
-            new InputActionBindingConfigValueCodec(keyCode => OS.GetKeycodeString((Key)keyCode)));
+            new GodotInputActionBinding("jump", defaultJump),
+            defaultJump,
+            InputActionBindingConfigValueCodec.Instance);
 });
 ```
 
 Settings are persisted to `user://settings.cfg` by default. Project settings can be used as defaults, with player changes saved in the settings file.
 
-Use small POCOs with mapped scalar properties. Use an explicit `IConfigValueCodec<TValue>` when a value spans multiple persisted fields, such as `InputActionBinding`.
+Use small POCOs with mapped scalar properties. Use an explicit `IConfigValueCodec<TValue>` when a value spans multiple persisted fields, such as `InputActionBindings`.
 
 The settings file uses Godot `ConfigFile` sections, slash paths, and native values:
 
@@ -80,7 +84,10 @@ master/muted=false
 
 [input]
 
-jump/key_code=74
+jump/0/type="key"
+jump/0/key_code=74
+jump/1/type="mouse_button"
+jump/1/button_index=1
 
 [gameplay]
 

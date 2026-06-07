@@ -82,11 +82,11 @@ public sealed class SettingsMonitorTests
     }
 
     [Fact]
-    public async Task InputActionBindingsUseActionKeyCodePath()
+    public async Task InputActionBindingsUseNumberedBindingPaths()
     {
         var store = new MemoryConfigOverlayStore();
         var services = new ServiceCollection();
-        var runtime = new TestRuntimeBinding<InputActionBinding>(new InputActionBinding(32, "Space"));
+        var runtime = new TestRuntimeBinding<InputActionBindings>(InputActionBindings.FromKeyCode(32));
 
         services.AddSingleton<IConfigOverlayStore>(store);
         services.AddSettings<InputTestOptions>("input", input =>
@@ -95,7 +95,7 @@ public sealed class SettingsMonitorTests
                 .PersistAs("jump")
                 .ToRuntime(
                     runtime,
-                    InputActionBinding.FromKeyCode(32),
+                    InputActionBindings.FromKeyCode(32),
                     InputActionBindingConfigValueCodec.Instance);
         });
 
@@ -105,10 +105,31 @@ public sealed class SettingsMonitorTests
             ValidateScopes = true,
         }).GetRequiredService<ISettingsMonitor<InputTestOptions>>();
 
-        await monitor.Update(options => options.Jump = new InputActionBinding(74, "J"));
+        await monitor.Update(options =>
+        {
+            options.Jump = new InputActionBindings(new InputBinding[]
+            {
+                new KeyInputBinding(74, "J", Shift: true),
+                new MouseButtonInputBinding(1, "Left Mouse"),
+            });
+        });
 
-        Assert.True(store.TryGet<long>("input", "jump/key_code", out var storedKeyCode));
+        Assert.True(store.TryGet<string>("input", "jump/0/type", out var firstType));
+        Assert.Equal("key", firstType);
+        Assert.True(store.TryGet<long>("input", "jump/0/key_code", out var storedKeyCode));
         Assert.Equal(74, storedKeyCode);
+        Assert.True(store.TryGet<bool>("input", "jump/0/shift", out var storedShift));
+        Assert.True(storedShift);
+        Assert.True(store.TryGet<string>("input", "jump/1/type", out var secondType));
+        Assert.Equal("mouse_button", secondType);
+        Assert.True(store.TryGet<long>("input", "jump/1/button_index", out var storedButtonIndex));
+        Assert.Equal(1, storedButtonIndex);
+
+        await monitor.Update(options => options.Jump = InputActionBindings.Empty);
+
+        Assert.True(store.TryGet<string>("input", "jump/0/type", out var emptyType));
+        Assert.Equal("none", emptyType);
+        Assert.False(store.TryGet<string>("input", "jump/1/type", out _));
     }
 
     [Fact]
@@ -116,7 +137,7 @@ public sealed class SettingsMonitorTests
     {
         var store = new MemoryConfigOverlayStore();
         var services = new ServiceCollection();
-        var runtime = new TestRuntimeBinding<InputActionBinding>(new InputActionBinding(32, "Space"));
+        var runtime = new TestRuntimeBinding<InputActionBindings>(InputActionBindings.FromKeyCode(32));
 
         services.AddSingleton<IConfigOverlayStore>(store);
         services.AddSettings<InputTestOptions>("input", input =>
@@ -125,7 +146,7 @@ public sealed class SettingsMonitorTests
                 .PersistAs("jump")
                 .ToRuntime(
                     runtime,
-                    InputActionBinding.FromKeyCode(32),
+                    InputActionBindings.FromKeyCode(32),
                     InputActionBindingConfigValueCodec.Instance);
         });
 
@@ -247,7 +268,7 @@ public sealed class SettingsMonitorTests
 
     private sealed class InputTestOptions
     {
-        public InputActionBinding Jump { get; set; } = new();
+        public InputActionBindings Jump { get; set; } = new();
     }
 
     private sealed class MutableReferenceOptions

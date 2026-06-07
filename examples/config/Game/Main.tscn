@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://fxy_di_config_main"]
+[gd_scene format=3 uid="uid://de26glbaacq6j"]
 
-[ext_resource type="Script" path="res://Game/Main.cs" id="1_main"]
+[ext_resource type="Script" uid="uid://cvdj5o1r36vto" path="res://Game/Main.cs" id="1_main"]
 
-[node name="Main" type="Control"]
+[node name="Main" type="Control" unique_id=1719609893]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

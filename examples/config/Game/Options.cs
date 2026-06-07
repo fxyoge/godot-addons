@@ -11,7 +11,7 @@ public sealed class AudioOptions
 
 public sealed class InputOptions
 {
-    public InputActionBinding Jump { get; set; } = new();
+    public InputActionBindings Jump { get; set; } = new();
 }
 
 public sealed class GameplayOptions
@@ -20,7 +20,7 @@ public sealed class GameplayOptions
 
     public bool ShowDamageNumbers { get; set; }
 
-    public float CameraSensitivity { get; set; }
+    public float SpawnRate { get; set; }
 }
 
 public sealed class ProjectDefaultsOptions

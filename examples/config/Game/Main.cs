@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Fxyoge.DependencyInjection;
 using Fxyoge.DependencyInjection.Configuration;
 using Godot;
@@ -34,7 +35,7 @@ public partial class Main : Control
     private CheckBox? _muteToggle;
     private OptionButton? _difficultySelect;
     private CheckBox? _damageNumbersToggle;
-    private HSlider? _sensitivitySlider;
+    private HSlider? _spawnSlider;
     private LineEdit? _titleEdit;
     private Label? _scoreLabel;
     private AudioStreamPlayer? _jumpSound;
@@ -322,11 +323,13 @@ public partial class Main : Control
         _jumpButton = new Button();
         _jumpButton.Pressed += async () =>
         {
-            var current = _input!.CurrentValue.Jump.KeyCode;
+            var current = _input!.CurrentValue.Jump.Bindings.OfType<KeyInputBinding>().FirstOrDefault()?.KeyCode ?? 0;
             var next = current == (long)Key.J ? Key.Space : Key.J;
             await _input.Update(options =>
             {
-                options.Jump = new InputActionBinding((long)next, OS.GetKeycodeString(next));
+                options.Jump = InputActionBindings.FromKeyCode(
+                    (long)next,
+                    keyCode => OS.GetKeycodeString((Key)keyCode));
             });
             RefreshUi();
         };
@@ -358,19 +361,19 @@ public partial class Main : Control
         };
         root.AddChild(_damageNumbersToggle);
 
-        _sensitivitySlider = new HSlider
+        _spawnSlider = new HSlider
         {
             MinValue = 0.1,
             MaxValue = 2.0,
             Step = 0.05,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        _sensitivitySlider.ValueChanged += async value =>
+        _spawnSlider.ValueChanged += async value =>
         {
-            await _gameplay!.Update(options => options.CameraSensitivity = (float)value);
+            await _gameplay!.Update(options => options.SpawnRate = (float)value);
             RefreshUi();
         };
-        root.AddChild(MakeRow("Spawn", _sensitivitySlider));
+        root.AddChild(MakeRow("Spawn Rate", _spawnSlider));
     }
 
     private void AddProjectControls(VBoxContainer root)
@@ -423,7 +426,7 @@ public partial class Main : Control
         _jumpButton.Text = input.Jump.DisplayName;
         _difficultySelect!.Select(Math.Max(0, GetDifficultyIndex(gameplay.Difficulty)));
         _damageNumbersToggle!.SetPressedNoSignal(gameplay.ShowDamageNumbers);
-        _sensitivitySlider!.SetValueNoSignal(gameplay.CameraSensitivity);
+        _spawnSlider!.SetValueNoSignal(gameplay.SpawnRate);
         if (!_titleEdit!.HasFocus() && _titleEdit.Text != project.GameTitle)
         {
             _titleEdit.Text = project.GameTitle;
@@ -450,7 +453,7 @@ public partial class Main : Control
         var size = GetViewportRect().Size;
         var gameplay = _gameplay!.CurrentValue;
         var difficulty = GetDifficulty(gameplay.Difficulty);
-        var spawnInterval = Mathf.Max(0.35f, difficulty.SpawnInterval / Mathf.Max(0.1f, gameplay.CameraSensitivity));
+        var spawnInterval = Mathf.Max(0.35f, difficulty.SpawnInterval / Mathf.Max(0.1f, gameplay.SpawnRate));
 
         _spawnTimer -= seconds;
         if (_spawnTimer <= 0)

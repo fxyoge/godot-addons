@@ -26,13 +26,17 @@ public sealed class ConfigStartup : IStartup
 
         services.AddSettings<InputOptions>("input", input =>
         {
+            var defaultJump = InputActionBindings.FromKeyCode(
+                (long)Key.Space,
+                keyCode => OS.GetKeycodeString((Key)keyCode));
+
             input.Map(x => x.Jump)
                 .WithUi("Jump", ConfigUiControl.KeyBinding)
                 .PersistAs("jump")
                 .ToRuntime(
-                    new GodotInputActionBinding("jump", (long)Key.Space),
-                    InputActionBinding.FromKeyCode((long)Key.Space, keyCode => OS.GetKeycodeString((Key)keyCode)),
-                    new InputActionBindingConfigValueCodec(keyCode => OS.GetKeycodeString((Key)keyCode)));
+                    new GodotInputActionBinding("jump", defaultJump),
+                    defaultJump,
+                    new InputActionBindingConfigValueCodec(FormatInputBinding));
         });
 
         services.AddSettings<GameplayOptions>("gameplay", gameplay =>
@@ -45,8 +49,8 @@ public sealed class ConfigStartup : IStartup
                 .WithUi("Show Damage Numbers", ConfigUiControl.Toggle)
                 .ToUserConfig(true);
 
-            gameplay.Map(x => x.CameraSensitivity)
-                .WithUi("Camera Sensitivity", ConfigUiControl.Slider, 0.1, 2.0, 0.05)
+            gameplay.Map(x => x.SpawnRate)
+                .WithUi("Spawn Rate", ConfigUiControl.Slider, 0.1, 2.0, 0.05)
                 .ToUserConfig(1.0f);
         });
 
@@ -64,4 +68,14 @@ public sealed class ConfigStartup : IStartup
                     "DI Config Example");
         });
     }
+
+    private static string FormatInputBinding(InputBinding binding)
+        => binding switch
+        {
+            KeyInputBinding key => OS.GetKeycodeString((Key)key.KeyCode),
+            MouseButtonInputBinding mouse => ((MouseButton)mouse.ButtonIndex).ToString(),
+            JoypadButtonInputBinding button => ((JoyButton)button.ButtonIndex).ToString(),
+            JoypadAxisInputBinding axis => $"{(JoyAxis)axis.Axis} {(axis.AxisValue >= 0 ? "+" : "-")}",
+            _ => binding.DisplayName,
+        };
 }
