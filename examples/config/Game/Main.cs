@@ -424,7 +424,11 @@ public partial class Main : Control
         _difficultySelect!.Select(Math.Max(0, GetDifficultyIndex(gameplay.Difficulty)));
         _damageNumbersToggle!.SetPressedNoSignal(gameplay.ShowDamageNumbers);
         _sensitivitySlider!.SetValueNoSignal(gameplay.CameraSensitivity);
-        _titleEdit!.Text = project.GameTitle;
+        if (!_titleEdit!.HasFocus() && _titleEdit.Text != project.GameTitle)
+        {
+            _titleEdit.Text = project.GameTitle;
+        }
+
         _scoreLabel!.Text = $"{project.GameTitle}  Score {_score}";
         GetWindow().Title = project.GameTitle;
     }

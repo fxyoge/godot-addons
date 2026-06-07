@@ -7,11 +7,19 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
 {
     private readonly string _settingPath;
     private readonly TValue _fallbackDefault;
+    private readonly bool _runtimeMutable;
+    private readonly bool _requiresRestart;
 
-    public GodotProjectSettingBinding(string settingPath, TValue fallbackDefault)
+    public GodotProjectSettingBinding(
+        string settingPath,
+        TValue fallbackDefault,
+        bool runtimeMutable = true,
+        bool requiresRestart = false)
     {
         _settingPath = settingPath;
         _fallbackDefault = fallbackDefault;
+        _runtimeMutable = runtimeMutable;
+        _requiresRestart = requiresRestart;
     }
 
     public TValue ReadDefault()
@@ -29,7 +37,7 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
                 return typed;
             }
 
-            return value is null ? _fallbackDefault : (TValue)Convert.ChangeType(value, typeof(TValue));
+            return value is null ? _fallbackDefault : ConvertValue(value);
         }
         catch (Exception ex)
         {
@@ -40,6 +48,19 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
 
     public void Apply(TValue value)
     {
+        if (!_runtimeMutable)
+        {
+            return;
+        }
+
+        try
+        {
+            ProjectSettings.SetSetting(_settingPath, ToGodotValue(value));
+        }
+        catch (Exception ex)
+        {
+            GD.PushWarning($"fxy_di_config could not apply ProjectSettings '{_settingPath}': {ex.Message}");
+        }
     }
 
     public ConfigEntryDescriptor Describe(string section, string key, ConfigUiHint? uiHint)
@@ -49,7 +70,37 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
             typeof(TValue),
             ConfigValueSource.ProjectSettings,
             Writable: true,
-            RuntimeMutable: true,
-            RequiresRestart: false,
+            RuntimeMutable: _runtimeMutable,
+            RequiresRestart: _requiresRestart,
             uiHint);
+
+    private static TValue ConvertValue(object value)
+    {
+        var targetType = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
+
+        if (targetType.IsEnum)
+        {
+            return (TValue)Enum.Parse(targetType, value.ToString()!, ignoreCase: true);
+        }
+
+        return (TValue)Convert.ChangeType(value, targetType);
+    }
+
+    private static Variant ToGodotValue(TValue value)
+        => value switch
+        {
+            null => default,
+            string typed => typed,
+            bool typed => typed,
+            byte typed => typed,
+            short typed => typed,
+            int typed => typed,
+            long typed => typed,
+            float typed => typed,
+            double typed => typed,
+            decimal typed => (double)typed,
+            Enum typed => typed.ToString(),
+            _ => throw new NotSupportedException(
+                $"fxy_di_config cannot apply '{typeof(TValue).FullName}' as a Godot ProjectSettings value."),
+        };
 }

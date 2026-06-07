@@ -187,6 +187,23 @@ public sealed class SettingsMonitorTests
         Assert.NotSame(first.Value, monitor.CurrentValue.Value);
     }
 
+    [Fact]
+    public void ProjectSettingBindingDescribesRuntimeMutability()
+    {
+        var binding = new GodotProjectSettingBinding<string>(
+            "application/config/name",
+            "Game",
+            runtimeMutable: false,
+            requiresRestart: true);
+
+        var descriptor = binding.Describe("project", "game_title", uiHint: null);
+
+        Assert.Equal(ConfigValueSource.ProjectSettings, descriptor.Source);
+        Assert.True(descriptor.Writable);
+        Assert.False(descriptor.RuntimeMutable);
+        Assert.True(descriptor.RequiresRestart);
+    }
+
     private static ServiceProvider CreateServices(out MemoryConfigOverlayStore store)
     {
         store = new MemoryConfigOverlayStore();
