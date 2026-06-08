@@ -13,12 +13,28 @@ public sealed class SettingsMonitorTests
     public void CurrentValueLoadsDefaults()
     {
         var services = CreateServices(store: out _);
+        var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
 
         var options = services.GetRequiredService<ISettingsMonitor<TestOptions>>().CurrentValue;
 
         Assert.Equal(0.75f, options.Volume);
+        Assert.Equal(0, runtime.ApplyCount);
         Assert.False(options.Muted);
         Assert.Equal("Normal", options.Difficulty);
+    }
+
+    [Fact]
+    public void CurrentValueAppliesPersistedRuntimeOverlayOnStartup()
+    {
+        var services = CreateServices(store: out var store);
+        var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
+        store.Set("settings", "volume", 0.25f);
+
+        var options = services.GetRequiredService<ISettingsMonitor<TestOptions>>().CurrentValue;
+
+        Assert.Equal(0.25f, options.Volume);
+        Assert.Equal(0.25f, runtime.AppliedValue);
+        Assert.Equal(1, runtime.ApplyCount);
     }
 
     [Fact]
@@ -368,7 +384,7 @@ public sealed class SettingsMonitorTests
     }
 
     [Fact]
-    public async Task ResetRemovesOverlayAndReloadsRuntimeDefaults()
+    public async Task ResetRemovesOverlayAndRestoresCapturedRuntimeDefaults()
     {
         var services = CreateServices(store: out var store);
         var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
@@ -380,8 +396,8 @@ public sealed class SettingsMonitorTests
         await monitor.Reset();
 
         Assert.False(store.TryGet<float>("settings", "volume", out _));
-        Assert.Equal(0.9f, monitor.CurrentValue.Volume);
-        Assert.Equal(0.9f, runtime.AppliedValue);
+        Assert.Equal(0.75f, monitor.CurrentValue.Volume);
+        Assert.Equal(0.75f, runtime.AppliedValue);
     }
 
     [Fact]
@@ -398,7 +414,6 @@ public sealed class SettingsMonitorTests
                 .PersistAs("jump")
                 .ToRuntime(
                     runtime,
-                    InputActionBindings.FromKeyCode(32),
                     InputActionBindingConfigValueCodec.Instance);
         });
 
@@ -449,7 +464,6 @@ public sealed class SettingsMonitorTests
                 .PersistAs("jump")
                 .ToRuntime(
                     runtime,
-                    InputActionBindings.FromKeyCode(32),
                     InputActionBindingConfigValueCodec.Instance);
         });
 
@@ -480,7 +494,6 @@ public sealed class SettingsMonitorTests
                 .PersistAs("jump")
                 .ToRuntime(
                     runtime,
-                    InputActionBindings.FromKeyCode(32),
                     InputActionBindingConfigValueCodec.Instance);
         });
 
@@ -526,7 +539,7 @@ public sealed class SettingsMonitorTests
         services.AddSettings<CloneableReferenceOptions>("cloneable", settings =>
         {
             settings.Map(x => x.Value)
-                .ToRuntime(runtime, new CloneableReferenceValue(10));
+                .ToRuntime(runtime);
         });
 
         var monitor = services.BuildServiceProvider(new ServiceProviderOptions
@@ -572,7 +585,7 @@ public sealed class SettingsMonitorTests
         {
             settings.Map(x => x.Volume)
                 .WithUi("Volume", ConfigUiControl.Slider, 0, 1, 0.01)
-                .ToRuntime(runtime, 0.75f);
+                .ToRuntime(runtime);
 
             settings.Map(x => x.Muted)
                 .WithUi("Mute", ConfigUiControl.Toggle)
@@ -650,9 +663,11 @@ public sealed class SettingsMonitorTests
 
         public TValue AppliedValue { get; private set; }
 
+        public int ApplyCount { get; private set; }
+
         public TValue? RejectedValue { get; set; }
 
-        public TValue ReadDefault() => DefaultValue;
+        public TValue CaptureDefault() => DefaultValue;
 
         public TValue ReadCurrent() => AppliedValue;
 
@@ -664,6 +679,7 @@ public sealed class SettingsMonitorTests
             }
 
             AppliedValue = value;
+            ApplyCount++;
         }
 
         public ConfigEntryDescriptor Describe(string section, string key, ConfigUiHint? uiHint)

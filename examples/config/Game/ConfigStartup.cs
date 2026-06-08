@@ -16,26 +16,21 @@ public sealed class ConfigStartup : IStartup
             audio.Map(x => x.MasterVolume)
                 .WithUi("Master Volume", ConfigUiControl.Slider, 0, 1, 0.01)
                 .PersistAs("master/volume")
-                .ToRuntime(new GodotAudioBusVolumeBinding("Master", 0.8f), 0.8f);
+                .ToRuntime(new GodotAudioBusVolumeBinding("Master"));
 
             audio.Map(x => x.Muted)
                 .WithUi("Mute", ConfigUiControl.Toggle)
                 .PersistAs("master/muted")
-                .ToRuntime(new GodotAudioBusMuteBinding("Master", false), false);
+                .ToRuntime(new GodotAudioBusMuteBinding("Master"));
         });
 
         services.AddSettings<InputOptions>("input", input =>
         {
-            var defaultJump = InputActionBindings.FromKeyCode(
-                (long)Key.Space,
-                keyCode => OS.GetKeycodeString((Key)keyCode));
-
             input.Map(x => x.Jump)
                 .WithUi("Jump", ConfigUiControl.KeyBinding)
                 .PersistAs("jump")
                 .ToRuntime(
-                    new GodotInputActionBinding("jump", defaultJump),
-                    defaultJump,
+                    new GodotInputActionBinding("jump"),
                     new InputActionBindingConfigValueCodec(FormatInputBinding));
         });
 

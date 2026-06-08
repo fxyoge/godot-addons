@@ -6,16 +6,13 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public sealed class GodotAudioBusVolumeBinding : IRuntimeConfigBinding<float>
 {
     private readonly string _busName;
-    private readonly float _defaultLinearVolume;
 
-    public GodotAudioBusVolumeBinding(string busName, float defaultLinearVolume)
+    public GodotAudioBusVolumeBinding(string busName)
     {
         _busName = busName;
-        _defaultLinearVolume = defaultLinearVolume;
     }
 
-    public float ReadDefault()
-        => _defaultLinearVolume;
+    public float CaptureDefault() => ReadCurrent();
 
     public float ReadCurrent()
     {

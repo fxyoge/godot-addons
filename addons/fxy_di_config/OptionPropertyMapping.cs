@@ -8,9 +8,9 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
 {
     private readonly Func<TOptions, TValue> _getValue;
     private readonly Action<TOptions, TValue> _setValue;
-    private readonly TValue _defaultValue;
     private readonly IRuntimeConfigBinding<TValue>? _runtimeBinding;
     private readonly IConfigValueCodec<TValue> _codec;
+    private TValue _defaultValue;
 
     public OptionPropertyMapping(
         string section,
@@ -42,17 +42,28 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
 
     public PropertyInfo Property { get; }
 
-    public void LoadDefault(TOptions options)
+    public void CaptureDefault()
     {
-        _setValue(options, _runtimeBinding is null ? _defaultValue : _runtimeBinding.ReadDefault());
+        if (_runtimeBinding is not null)
+        {
+            _defaultValue = ConfigMappedValue.Copy(_runtimeBinding.CaptureDefault());
+        }
     }
 
-    public void LoadOverlay(TOptions options, IConfigOverlayStore store)
+    public void LoadDefault(TOptions options)
+    {
+        _setValue(options, ConfigMappedValue.Copy(_defaultValue));
+    }
+
+    public bool LoadOverlay(TOptions options, IConfigOverlayStore store)
     {
         if (_codec.TryRead(store, Section, Key, out var value))
         {
             _setValue(options, value);
+            return true;
         }
+
+        return false;
     }
 
     public void CaptureOverlay(TOptions options, IConfigOverlayStore store)

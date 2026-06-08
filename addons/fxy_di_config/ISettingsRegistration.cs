@@ -18,9 +18,11 @@ public interface IOptionPropertyMapping<TOptions>
 
     PropertyInfo Property { get; }
 
+    void CaptureDefault();
+
     void LoadDefault(TOptions options);
 
-    void LoadOverlay(TOptions options, IConfigOverlayStore store);
+    bool LoadOverlay(TOptions options, IConfigOverlayStore store);
 
     void CaptureOverlay(TOptions options, IConfigOverlayStore store);
 

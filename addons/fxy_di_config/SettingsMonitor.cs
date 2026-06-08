@@ -25,8 +25,13 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         _store = store;
         _mappings = registrations.SelectMany(registration => registration.Mappings).ToArray();
         _mappingsByProperty = _mappings.ToDictionary(mapping => mapping.Property);
-        _currentValue = LoadCurrentValue();
-        Apply(_currentValue);
+        foreach (var mapping in _mappings)
+        {
+            mapping.CaptureDefault();
+        }
+
+        _currentValue = LoadCurrentValue(out var overlayMappings);
+        Apply(_currentValue, overlayMappings);
     }
 
     public TOptions CurrentValue
@@ -236,7 +241,7 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
                 throw;
             }
 
-            next = LoadCurrentValue();
+            next = LoadCurrentValue(out _);
             var runtimeSnapshots = CaptureRuntime(_mappings);
             try
             {
@@ -290,27 +295,37 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
                 mapping.ResetOverlay(_store);
             }
 
-            var next = LoadCurrentValue();
+            var next = LoadCurrentValue(out _);
             return new PreparedSettingsCommit(this, next, _mappings);
         }
     }
 
-    private TOptions LoadCurrentValue()
+    private TOptions LoadCurrentValue(out IReadOnlyList<IOptionPropertyMapping<TOptions>> overlayMappings)
     {
         var options = new TOptions();
+        var overlays = new List<IOptionPropertyMapping<TOptions>>();
 
         foreach (var mapping in _mappings)
         {
             mapping.LoadDefault(options);
-            mapping.LoadOverlay(options, _store);
+            if (mapping.LoadOverlay(options, _store))
+            {
+                overlays.Add(mapping);
+            }
         }
 
+        overlayMappings = overlays;
         return options;
     }
 
     private void Apply(TOptions options)
+        => Apply(options, _mappings);
+
+    private static void Apply(
+        TOptions options,
+        IEnumerable<IOptionPropertyMapping<TOptions>> mappings)
     {
-        foreach (var mapping in _mappings)
+        foreach (var mapping in mappings)
         {
             mapping.Apply(options);
         }

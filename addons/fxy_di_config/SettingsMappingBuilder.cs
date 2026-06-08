@@ -130,9 +130,6 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
         Add(defaultValue, ConfigValueSource.UserConfig, runtimeBinding: null, codec);
     }
 
-    public void ToRuntime(IRuntimeConfigBinding<TValue> runtimeBinding, TValue defaultValue)
-        => ToRuntime(runtimeBinding, defaultValue, ScalarConfigValueCodec<TValue>.Instance);
-
     public void ToRuntime(IRuntimeConfigBinding<TValue> runtimeBinding)
         => ToRuntime(runtimeBinding, ScalarConfigValueCodec<TValue>.Instance);
 
@@ -141,14 +138,6 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
         IConfigValueCodec<TValue> codec)
     {
         Add(default!, runtimeBinding.Describe(_section, _key, _uiHint), runtimeBinding, codec);
-    }
-
-    public void ToRuntime(
-        IRuntimeConfigBinding<TValue> runtimeBinding,
-        TValue defaultValue,
-        IConfigValueCodec<TValue> codec)
-    {
-        Add(defaultValue, runtimeBinding.Describe(_section, _key, _uiHint), runtimeBinding, codec);
     }
 
     private void Add(

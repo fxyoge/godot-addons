@@ -6,25 +6,21 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionBindings>
 {
     private readonly string _actionName;
-    private readonly InputActionBindings _defaultBindings;
     private readonly bool _preserveUnsupportedEvents;
 
     public GodotInputActionBinding(
         string actionName,
-        InputActionBindings defaultBindings,
         bool preserveUnsupportedEvents = true)
     {
         _actionName = actionName;
-        _defaultBindings = defaultBindings;
         _preserveUnsupportedEvents = preserveUnsupportedEvents;
     }
 
-    public InputActionBindings ReadDefault()
-        => _defaultBindings;
+    public InputActionBindings CaptureDefault() => ReadCurrent();
 
     public InputActionBindings ReadCurrent()
     {
-        EnsureAction();
+        EnsureActionExists();
 
         var bindings = new List<InputBinding>();
         foreach (var inputEvent in InputMap.ActionGetEvents(_actionName))
@@ -40,7 +36,7 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
 
     public void Apply(InputActionBindings value)
     {
-        EnsureAction();
+        EnsureActionExists();
 
         foreach (var inputEvent in InputMap.ActionGetEvents(_actionName))
         {
@@ -70,11 +66,12 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
             RequiresRestart: false,
             uiHint ?? new ConfigUiHint(key, ConfigUiControl.KeyBinding));
 
-    private void EnsureAction()
+    private void EnsureActionExists()
     {
         if (!InputMap.HasAction(_actionName))
         {
-            InputMap.AddAction(_actionName);
+            throw new System.InvalidOperationException(
+                $"fxy_di_config could not find input action '{_actionName}'. Define it in Godot's Input Map.");
         }
     }
 

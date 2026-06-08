@@ -2,7 +2,7 @@ namespace Fxyoge.DependencyInjection.Configuration;
 
 public interface IRuntimeConfigBinding<TValue>
 {
-    TValue ReadDefault();
+    TValue CaptureDefault();
 
     TValue ReadCurrent();
 

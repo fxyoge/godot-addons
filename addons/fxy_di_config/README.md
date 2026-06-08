@@ -46,31 +46,27 @@ services.AddSettings<AudioOptions>("audio", audio =>
     audio.Map(x => x.MasterVolume)
         .WithUi("Master Volume", ConfigUiControl.Slider, 0, 1, 0.01)
         .PersistAs("master/volume")
-        .ToRuntime(new GodotAudioBusVolumeBinding("Master", 0.8f), 0.8f);
+        .ToRuntime(new GodotAudioBusVolumeBinding("Master"));
 
     audio.Map(x => x.Muted)
         .WithUi("Mute", ConfigUiControl.Toggle)
         .PersistAs("master/muted")
-        .ToRuntime(new GodotAudioBusMuteBinding("Master", false), false);
+        .ToRuntime(new GodotAudioBusMuteBinding("Master"));
 });
 
 services.AddSettings<InputOptions>("input", input =>
 {
-    var defaultJump = InputActionBindings.FromKeyCode(
-        (long)Key.Space,
-        keyCode => OS.GetKeycodeString((Key)keyCode));
-
     input.Map(x => x.Jump)
         .WithUi("Jump", ConfigUiControl.KeyBinding)
         .PersistAs("jump")
         .ToRuntime(
-            new GodotInputActionBinding("jump", defaultJump),
-            defaultJump,
+            new GodotInputActionBinding("jump"),
             InputActionBindingConfigValueCodec.Instance);
 });
 ```
 
 Settings are persisted to `user://settings.cfg` by default. Project settings can be used as defaults, with player changes saved in the settings file.
+Runtime defaults come from Godot project state: define input actions in the Input Map, audio buses in the bus layout, and project settings in `project.godot`.
 
 Use small POCOs with mapped scalar properties. Use an explicit `IConfigValueCodec<TValue>` when a value spans multiple persisted fields, such as `InputActionBindings`.
 

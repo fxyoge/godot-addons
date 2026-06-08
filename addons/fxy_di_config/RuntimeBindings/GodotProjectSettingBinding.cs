@@ -19,7 +19,7 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
         _requiresRestart = requiresRestart;
     }
 
-    public TValue ReadDefault()
+    public TValue CaptureDefault()
         => ReadProjectSetting();
 
     public TValue ReadCurrent() => ReadProjectSetting();

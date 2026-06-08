@@ -6,16 +6,13 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public sealed class GodotAudioBusMuteBinding : IRuntimeConfigBinding<bool>
 {
     private readonly string _busName;
-    private readonly bool _defaultMuted;
 
-    public GodotAudioBusMuteBinding(string busName, bool defaultMuted)
+    public GodotAudioBusMuteBinding(string busName)
     {
         _busName = busName;
-        _defaultMuted = defaultMuted;
     }
 
-    public bool ReadDefault()
-        => _defaultMuted;
+    public bool CaptureDefault() => ReadCurrent();
 
     public bool ReadCurrent()
     {
