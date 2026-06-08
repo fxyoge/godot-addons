@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 
 namespace Fxyoge.DependencyInjection.Configuration;
 
@@ -14,6 +15,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
     public OptionPropertyMapping(
         string section,
         string key,
+        PropertyInfo property,
         Func<TOptions, TValue> getValue,
         Action<TOptions, TValue> setValue,
         TValue fallbackDefault,
@@ -23,6 +25,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
     {
         Section = section;
         Key = key;
+        Property = property;
         _getValue = getValue;
         _setValue = setValue;
         _fallbackDefault = fallbackDefault;
@@ -36,6 +39,8 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
     private string Key { get; }
 
     public ConfigEntryDescriptor Descriptor { get; }
+
+    public PropertyInfo Property { get; }
 
     public void LoadDefault(TOptions options)
     {
@@ -58,6 +63,41 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
     public void Apply(TOptions options)
     {
         _runtimeBinding?.Apply(_getValue(options));
+    }
+
+    public TRequested GetValue<TRequested>(TOptions options)
+    {
+        var value = _getValue(options);
+        if (value is TRequested typed)
+        {
+            return typed;
+        }
+
+        if (value is null)
+        {
+            return default!;
+        }
+
+        throw new InvalidOperationException(
+            $"Mapped setting '{Section}/{Key}' is '{typeof(TValue).FullName}', not '{typeof(TRequested).FullName}'.");
+    }
+
+    public void SetValue<TRequested>(TOptions options, TRequested value)
+    {
+        if (value is TValue typed)
+        {
+            _setValue(options, typed);
+            return;
+        }
+
+        if (value is null && default(TValue) is null)
+        {
+            _setValue(options, default!);
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Mapped setting '{Section}/{Key}' is '{typeof(TValue).FullName}', not '{typeof(TRequested).FullName}'.");
     }
 
     public void ResetOverlay(IConfigOverlayStore store)

@@ -17,7 +17,7 @@ public partial class DifficultyControl : HBoxContainer
 
         _select.ItemSelected += async index =>
         {
-            await _gameplay.Update(options => options.Difficulty = _select.GetItemText((int)index));
+            await _gameplay.Set(options => options.Difficulty, _select.GetItemText((int)index));
         };
 
         _subscription = _gameplay.OnChange(_ => CallDeferred(MethodName.Refresh));

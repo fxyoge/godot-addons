@@ -1,4 +1,5 @@
 using System;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 
@@ -9,9 +10,13 @@ public interface ISettingsMonitor<TOptions> : IOptionsMonitor<TOptions>
 {
     IDisposable OnChange(Action<TOptions> listener);
 
-    ValueTask Update(Action<TOptions> update);
+    ValueTask Update<TValue>(
+        Expression<Func<TOptions, TValue>> property,
+        Func<TValue, TValue> update);
 
-    ValueTask Set(TOptions value);
+    ValueTask Set<TValue>(
+        Expression<Func<TOptions, TValue>> property,
+        TValue value);
 
     ValueTask Reset();
 

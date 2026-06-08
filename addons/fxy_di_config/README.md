@@ -109,7 +109,7 @@ public sealed class SettingsMenu
     }
 
     public ValueTask SetVolume(float volume)
-        => _audio.Update(options => options.MasterVolume = volume);
+        => _audio.Set(options => options.MasterVolume, volume);
 }
 ```
 

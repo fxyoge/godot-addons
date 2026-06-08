@@ -19,7 +19,7 @@ public partial class SpawnRateControl : HBoxContainer
 
         _slider.ValueChanged += async value =>
         {
-            await _gameplay.Update(options => options.SpawnRate = (float)value);
+            await _gameplay.Set(options => options.SpawnRate, (float)value);
         };
 
         _subscription = _gameplay.OnChange(_ => CallDeferred(MethodName.Refresh));

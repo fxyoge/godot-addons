@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 
@@ -11,6 +13,7 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
 {
     private readonly IConfigOverlayStore _store;
     private readonly IReadOnlyList<IOptionPropertyMapping<TOptions>> _mappings;
+    private readonly IReadOnlyDictionary<PropertyInfo, IOptionPropertyMapping<TOptions>> _mappingsByProperty;
     private readonly object _sync = new();
     private readonly List<Action<TOptions, string>> _listeners = new();
     private TOptions _currentValue;
@@ -21,6 +24,7 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
     {
         _store = store;
         _mappings = registrations.SelectMany(registration => registration.Mappings).ToArray();
+        _mappingsByProperty = _mappings.ToDictionary(mapping => mapping.Property);
         _currentValue = LoadCurrentValue();
         Apply(_currentValue);
     }
@@ -57,14 +61,25 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         });
     }
 
-    public ValueTask Update(Action<TOptions> update)
+    public ValueTask Update<TValue>(
+        Expression<Func<TOptions, TValue>> property,
+        Func<TValue, TValue> update)
     {
-        var next = CurrentValue;
-        update(next);
-        return Commit(next, save: true);
+        var mapping = GetMapping(property);
+        TValue current;
+
+        lock (_sync)
+        {
+            current = mapping.GetValue<TValue>(_currentValue);
+        }
+
+        return Commit(mapping, update(current), save: true);
     }
 
-    public ValueTask Set(TOptions value) => Commit(CloneMapped(value), save: true);
+    public ValueTask Set<TValue>(
+        Expression<Func<TOptions, TValue>> property,
+        TValue value)
+        => Commit(GetMapping(property), value, save: true);
 
     public ValueTask Reset() => Reset(save: true);
 
@@ -74,29 +89,71 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         return ValueTask.CompletedTask;
     }
 
-    internal ValueTask Commit(TOptions value, bool save, bool captureOverlay = true)
+    internal ValueTask Commit<TValue>(
+        IOptionPropertyMapping<TOptions> mapping,
+        TValue value,
+        bool save,
+        bool captureOverlay = true)
     {
         IReadOnlyList<Action<TOptions, string>> listeners;
         TOptions publishedValue;
 
         lock (_sync)
         {
+            var next = CloneMapped(_currentValue);
+            mapping.SetValue(next, value);
+
             if (captureOverlay)
             {
-                foreach (var mapping in _mappings)
-                {
-                    mapping.CaptureOverlay(value, _store);
-                }
+                mapping.CaptureOverlay(next, _store);
             }
 
-            Apply(value);
+            mapping.Apply(next);
 
             if (save)
             {
                 _store.Save();
             }
 
-            _currentValue = CloneMapped(value);
+            _currentValue = CloneMapped(next);
+            publishedValue = CloneMapped(_currentValue);
+            listeners = _listeners.ToArray();
+        }
+
+        foreach (var listener in listeners)
+        {
+            listener(CloneMapped(publishedValue), Options.DefaultName);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    internal ValueTask Commit(
+        TOptions value,
+        IEnumerable<IOptionPropertyMapping<TOptions>> changedMappings,
+        bool save)
+    {
+        IReadOnlyList<Action<TOptions, string>> listeners;
+        TOptions publishedValue;
+
+        lock (_sync)
+        {
+            var next = CloneMapped(_currentValue);
+            var changed = changedMappings.ToArray();
+
+            foreach (var mapping in changed)
+            {
+                CopyMappedValue(mapping, value, next);
+                mapping.CaptureOverlay(next, _store);
+                mapping.Apply(next);
+            }
+
+            if (save)
+            {
+                _store.Save();
+            }
+
+            _currentValue = CloneMapped(next);
             publishedValue = CloneMapped(_currentValue);
             listeners = _listeners.ToArray();
         }
@@ -111,7 +168,9 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
 
     internal ValueTask Reset(bool save)
     {
+        IReadOnlyList<Action<TOptions, string>> listeners;
         TOptions next;
+        TOptions publishedValue;
 
         lock (_sync)
         {
@@ -121,9 +180,24 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
             }
 
             next = LoadCurrentValue();
+            Apply(next);
+
+            if (save)
+            {
+                _store.Save();
+            }
+
+            _currentValue = CloneMapped(next);
+            publishedValue = CloneMapped(_currentValue);
+            listeners = _listeners.ToArray();
         }
 
-        return Commit(next, save, captureOverlay: false);
+        foreach (var listener in listeners)
+        {
+            listener(CloneMapped(publishedValue), Options.DefaultName);
+        }
+
+        return ValueTask.CompletedTask;
     }
 
     private TOptions LoadCurrentValue()
@@ -157,6 +231,27 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         }
 
         return clone;
+    }
+
+    private IOptionPropertyMapping<TOptions> GetMapping<TValue>(
+        Expression<Func<TOptions, TValue>> property)
+    {
+        var propertyInfo = SettingsPropertyExpression.GetProperty(property);
+        if (_mappingsByProperty.TryGetValue(propertyInfo, out var mapping))
+        {
+            return mapping;
+        }
+
+        throw new InvalidOperationException(
+            $"Options property '{typeof(TOptions).FullName}.{propertyInfo.Name}' is not mapped.");
+    }
+
+    private static void CopyMappedValue(
+        IOptionPropertyMapping<TOptions> mapping,
+        TOptions source,
+        TOptions target)
+    {
+        mapping.CopyValue(source, target);
     }
 
     private sealed class ListenerSubscription : IDisposable

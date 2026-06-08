@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace Fxyoge.DependencyInjection.Configuration;
 
@@ -15,6 +16,8 @@ public interface IOptionPropertyMapping<TOptions>
 {
     ConfigEntryDescriptor Descriptor { get; }
 
+    PropertyInfo Property { get; }
+
     void LoadDefault(TOptions options);
 
     void LoadOverlay(TOptions options, IConfigOverlayStore store);
@@ -22,6 +25,10 @@ public interface IOptionPropertyMapping<TOptions>
     void CaptureOverlay(TOptions options, IConfigOverlayStore store);
 
     void Apply(TOptions options);
+
+    TValue GetValue<TValue>(TOptions options);
+
+    void SetValue<TValue>(TOptions options, TValue value);
 
     void ResetOverlay(IConfigOverlayStore store);
 

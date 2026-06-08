@@ -34,13 +34,38 @@ public sealed class SettingsMonitorTests
             Assert.Equal(0.25f, options.Volume);
         });
 
-        await monitor.Update(options => options.Volume = 0.25f);
+        await monitor.Set(options => options.Volume, 0.25f);
 
         Assert.True(store.TryGet<float>("settings", "volume", out var stored));
         Assert.Equal(0.25f, stored);
         Assert.Equal(0.25f, runtime.AppliedValue);
         Assert.Equal(1, store.SaveCount);
         Assert.Equal(1, notificationCount);
+    }
+
+    [Fact]
+    public async Task SetPersistsOnlyTargetProperty()
+    {
+        var services = CreateServices(store: out var store);
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+
+        await monitor.Set(options => options.Volume, 0.25f);
+
+        Assert.True(store.TryGet<float>("settings", "volume", out var storedVolume));
+        Assert.Equal(0.25f, storedVolume);
+        Assert.False(store.TryGet<bool>("settings", "muted", out _));
+        Assert.False(store.TryGet<string>("settings", "difficulty", out _));
+    }
+
+    [Fact]
+    public async Task UpdateTransformsTargetProperty()
+    {
+        var services = CreateServices(store: out _);
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+
+        await monitor.Update(options => options.Volume, volume => volume - 0.25f);
+
+        Assert.Equal(0.5f, monitor.CurrentValue.Volume);
     }
 
     [Fact]
@@ -58,7 +83,7 @@ public sealed class SettingsMonitorTests
 
         monitor.OnChange(_ => liveNotificationCount++);
 
-        await transactional.Update(options => options.Volume = 0.5f);
+        await transactional.Set(options => options.Volume, 0.5f);
 
         Assert.Equal(0.5f, transactional.CurrentValue.Volume);
         Assert.Equal(0.75f, monitor.CurrentValue.Volume);
@@ -77,6 +102,26 @@ public sealed class SettingsMonitorTests
     }
 
     [Fact]
+    public async Task TransactionalMonitorSavesOnlyChangedProperties()
+    {
+        var services = CreateServices(store: out var store);
+        var transaction = new SettingsTransaction(store);
+        var transactional = new TransactionalSettingsMonitor<TestOptions>(
+            services.GetRequiredService<SettingsMonitor<TestOptions>>(),
+            transaction,
+            services.GetServices<ISettingsRegistration<TestOptions>>());
+
+        await transactional.Set(options => options.Muted, true);
+
+        await transaction.Save();
+
+        Assert.True(store.TryGet<bool>("settings", "muted", out var storedMuted));
+        Assert.True(storedMuted);
+        Assert.False(store.TryGet<float>("settings", "volume", out _));
+        Assert.False(store.TryGet<string>("settings", "difficulty", out _));
+    }
+
+    [Fact]
     public async Task TransactionAbandonDropsDraftChanges()
     {
         var services = CreateServices(store: out var store);
@@ -88,7 +133,7 @@ public sealed class SettingsMonitorTests
             transaction,
             services.GetServices<ISettingsRegistration<TestOptions>>());
 
-        await transactional.Update(options => options.Volume = 0.5f);
+        await transactional.Set(options => options.Volume, 0.5f);
 
         transaction.Abandon();
 
@@ -110,9 +155,9 @@ public sealed class SettingsMonitorTests
             transaction,
             services.GetServices<ISettingsRegistration<TestOptions>>());
 
-        await transactional.Update(options => options.Volume = 0.5f);
+        await transactional.Set(options => options.Volume, 0.5f);
         transaction.Abandon();
-        await monitor.Update(options => options.Volume = 0.25f);
+        await monitor.Set(options => options.Volume, 0.25f);
 
         Assert.Equal(0.25f, transactional.CurrentValue.Volume);
         Assert.False(transaction.HasChanges);
@@ -129,8 +174,8 @@ public sealed class SettingsMonitorTests
             transaction,
             services.GetServices<ISettingsRegistration<TestOptions>>());
 
-        await transactional.Update(options => options.Volume = 0.5f);
-        await monitor.Update(options => options.Volume = 0.25f);
+        await transactional.Set(options => options.Volume, 0.5f);
+        await monitor.Set(options => options.Volume, 0.25f);
 
         Assert.Equal(0.5f, transactional.CurrentValue.Volume);
         Assert.True(transaction.HasChanges);
@@ -143,7 +188,7 @@ public sealed class SettingsMonitorTests
         var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
         var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
 
-        await monitor.Update(options => options.Volume = 0.2f);
+        await monitor.Set(options => options.Volume, 0.2f);
         runtime.DefaultValue = 0.9f;
 
         await monitor.Reset();
@@ -177,14 +222,13 @@ public sealed class SettingsMonitorTests
             ValidateScopes = true,
         }).GetRequiredService<ISettingsMonitor<InputTestOptions>>();
 
-        await monitor.Update(options =>
-        {
-            options.Jump = new InputActionBindings(new InputBinding[]
+        await monitor.Set(
+            options => options.Jump,
+            new InputActionBindings(new InputBinding[]
             {
                 new KeyInputBinding(74, "J", Shift: true),
                 new MouseButtonInputBinding(1, "Left Mouse"),
-            });
-        });
+            }));
 
         Assert.True(store.TryGet<string>("input", "jump/0/type", out var firstType));
         Assert.Equal("key", firstType);
@@ -197,7 +241,7 @@ public sealed class SettingsMonitorTests
         Assert.True(store.TryGet<long>("input", "jump/1/button_index", out var storedButtonIndex));
         Assert.Equal(1, storedButtonIndex);
 
-        await monitor.Update(options => options.Jump = InputActionBindings.Empty);
+        await monitor.Set(options => options.Jump, InputActionBindings.Empty);
 
         Assert.True(store.TryGet<string>("input", "jump/0/type", out var emptyType));
         Assert.Equal("none", emptyType);

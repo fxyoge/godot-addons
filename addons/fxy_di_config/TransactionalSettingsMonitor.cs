@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 
@@ -14,13 +16,14 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 {
     private readonly SettingsMonitor<TOptions> _liveMonitor;
     private readonly IReadOnlyList<IOptionPropertyMapping<TOptions>> _mappings;
+    private readonly IReadOnlyDictionary<PropertyInfo, IOptionPropertyMapping<TOptions>> _mappingsByProperty;
     private readonly SettingsTransaction _transaction;
     private readonly IDisposable _liveSubscription;
     private readonly object _sync = new();
     private readonly List<Action<TOptions, string>> _listeners = new();
+    private readonly HashSet<IOptionPropertyMapping<TOptions>> _changedMappings = new();
     private TOptions _currentValue;
     private bool _pendingReset;
-    private bool _hasValueChanges;
 
     public TransactionalSettingsMonitor(
         SettingsMonitor<TOptions> liveMonitor,
@@ -36,6 +39,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         _liveMonitor = liveMonitor;
         _transaction = settingsTransaction;
         _mappings = registrations.SelectMany(registration => registration.Mappings).ToArray();
+        _mappingsByProperty = _mappings.ToDictionary(mapping => mapping.Property);
         _currentValue = CloneMapped(_liveMonitor.CurrentValue);
         _liveSubscription = _liveMonitor.OnChange(SyncFromLive);
         _transaction.Enlist(this);
@@ -58,7 +62,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         {
             lock (_sync)
             {
-                return _pendingReset || _hasValueChanges;
+                return _pendingReset || _changedMappings.Count > 0;
             }
         }
     }
@@ -84,22 +88,32 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         });
     }
 
-    public ValueTask Update(Action<TOptions> update)
+    public ValueTask Update<TValue>(
+        Expression<Func<TOptions, TValue>> property,
+        Func<TValue, TValue> update)
     {
-        var next = CurrentValue;
-        update(next);
-        return Set(next);
+        var mapping = GetMapping(property);
+        TValue current;
+
+        lock (_sync)
+        {
+            current = mapping.GetValue<TValue>(_currentValue);
+        }
+
+        return Set(property, update(current));
     }
 
-    public ValueTask Set(TOptions value)
+    public ValueTask Set<TValue>(
+        Expression<Func<TOptions, TValue>> property,
+        TValue value)
     {
-        Publish(value, pendingReset: _pendingReset, hasValueChanges: true);
+        Publish(GetMapping(property), value);
         return ValueTask.CompletedTask;
     }
 
     public ValueTask Reset()
     {
-        Publish(LoadDefaults(), pendingReset: true, hasValueChanges: false);
+        PublishReset(LoadDefaults());
         return ValueTask.CompletedTask;
     }
 
@@ -109,16 +123,16 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
     {
         TOptions value;
         bool pendingReset;
-        bool hasValueChanges;
+        IOptionPropertyMapping<TOptions>[] changedMappings;
 
         lock (_sync)
         {
             value = CloneMapped(_currentValue);
             pendingReset = _pendingReset;
-            hasValueChanges = _hasValueChanges;
+            changedMappings = _changedMappings.ToArray();
         }
 
-        if (!pendingReset && !hasValueChanges)
+        if (!pendingReset && changedMappings.Length == 0)
         {
             return;
         }
@@ -128,22 +142,22 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
             await _liveMonitor.Reset(save: false);
         }
 
-        if (hasValueChanges)
+        if (changedMappings.Length > 0)
         {
-            await _liveMonitor.Commit(value, save: false);
+            await _liveMonitor.Commit(value, changedMappings, save: false);
         }
 
         lock (_sync)
         {
             _currentValue = CloneMapped(_liveMonitor.CurrentValue);
             _pendingReset = false;
-            _hasValueChanges = false;
+            _changedMappings.Clear();
         }
     }
 
     public void Abandon()
     {
-        Publish(_liveMonitor.CurrentValue, pendingReset: false, hasValueChanges: false);
+        PublishClean(_liveMonitor.CurrentValue);
     }
 
     public void Dispose()
@@ -155,16 +169,37 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
     {
         lock (_sync)
         {
-            if (_pendingReset || _hasValueChanges)
+            if (_pendingReset || _changedMappings.Count > 0)
             {
                 return;
             }
         }
 
-        Publish(value, pendingReset: false, hasValueChanges: false);
+        PublishClean(value);
     }
 
-    private void Publish(TOptions value, bool pendingReset, bool hasValueChanges)
+    private void Publish<TValue>(IOptionPropertyMapping<TOptions> mapping, TValue value)
+    {
+        IReadOnlyList<Action<TOptions, string>> listeners;
+        TOptions publishedValue;
+
+        lock (_sync)
+        {
+            var next = CloneMapped(_currentValue);
+            mapping.SetValue(next, value);
+            _currentValue = CloneMapped(next);
+            _changedMappings.Add(mapping);
+            publishedValue = CloneMapped(_currentValue);
+            listeners = _listeners.ToArray();
+        }
+
+        foreach (var listener in listeners)
+        {
+            listener(CloneMapped(publishedValue), Options.DefaultName);
+        }
+    }
+
+    private void PublishReset(TOptions value)
     {
         IReadOnlyList<Action<TOptions, string>> listeners;
         TOptions publishedValue;
@@ -172,8 +207,28 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         lock (_sync)
         {
             _currentValue = CloneMapped(value);
-            _pendingReset = pendingReset;
-            _hasValueChanges = hasValueChanges;
+            _pendingReset = true;
+            _changedMappings.Clear();
+            publishedValue = CloneMapped(_currentValue);
+            listeners = _listeners.ToArray();
+        }
+
+        foreach (var listener in listeners)
+        {
+            listener(CloneMapped(publishedValue), Options.DefaultName);
+        }
+    }
+
+    private void PublishClean(TOptions value)
+    {
+        IReadOnlyList<Action<TOptions, string>> listeners;
+        TOptions publishedValue;
+
+        lock (_sync)
+        {
+            _currentValue = CloneMapped(value);
+            _pendingReset = false;
+            _changedMappings.Clear();
             publishedValue = CloneMapped(_currentValue);
             listeners = _listeners.ToArray();
         }
@@ -206,6 +261,19 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         }
 
         return clone;
+    }
+
+    private IOptionPropertyMapping<TOptions> GetMapping<TValue>(
+        Expression<Func<TOptions, TValue>> property)
+    {
+        var propertyInfo = SettingsPropertyExpression.GetProperty(property);
+        if (_mappingsByProperty.TryGetValue(propertyInfo, out var mapping))
+        {
+            return mapping;
+        }
+
+        throw new InvalidOperationException(
+            $"Options property '{typeof(TOptions).FullName}.{propertyInfo.Name}' is not mapped.");
     }
 
     private sealed class ListenerSubscription : IDisposable

@@ -41,6 +41,7 @@ public sealed class SettingsMappingBuilder<TOptions>
         return new SettingPropertyMappingBuilder<TOptions, TValue>(
             Section,
             ToSnakeCase(propertyInfo.Name),
+            propertyInfo,
             getter,
             Setter,
             mapping => _mappings.Add(mapping));
@@ -82,6 +83,7 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
 {
     private readonly string _section;
     private string _key;
+    private readonly PropertyInfo _property;
     private readonly Func<TOptions, TValue> _getValue;
     private readonly Action<TOptions, TValue> _setValue;
     private readonly Action<IOptionPropertyMapping<TOptions>> _addMapping;
@@ -90,12 +92,14 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
     internal SettingPropertyMappingBuilder(
         string section,
         string key,
+        PropertyInfo property,
         Func<TOptions, TValue> getValue,
         Action<TOptions, TValue> setValue,
         Action<IOptionPropertyMapping<TOptions>> addMapping)
     {
         _section = section;
         _key = key;
+        _property = property;
         _getValue = getValue;
         _setValue = setValue;
         _addMapping = addMapping;
@@ -169,6 +173,7 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
         _addMapping(new OptionPropertyMapping<TOptions, TValue>(
             _section,
             _key,
+            _property,
             _getValue,
             _setValue,
             fallbackDefault,
