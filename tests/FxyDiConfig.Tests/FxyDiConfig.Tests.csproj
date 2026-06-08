@@ -22,6 +22,11 @@
       Include="../../addons/fxy_di_config/Fxyoge.DependencyInjection.Configuration.csproj"
       OutputItemType="Reference"
       ReferenceOutputAssembly="true" />
+    <ProjectReference
+      Include="../../examples/config/ConfigExample.csproj"
+      OutputItemType="Reference"
+      ReferenceOutputAssembly="true"
+      Aliases="ConfigExample" />
   </ItemGroup>
 
 </Project>

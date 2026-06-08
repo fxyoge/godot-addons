@@ -48,7 +48,9 @@ public partial class ConfigMenu : PanelContainer
     private static void OpenSettingsFolder()
     {
         var settingsDirectory = ProjectSettings.GlobalizePath("user://");
-        DirAccess.MakeDirRecursiveAbsolute(settingsDirectory);
+        ConfigMenuErrors.ThrowIfDirectoryCreationFailed(
+            settingsDirectory,
+            DirAccess.MakeDirRecursiveAbsolute(settingsDirectory));
 
         var error = OS.ShellOpen(settingsDirectory);
         if (error != Error.Ok)
