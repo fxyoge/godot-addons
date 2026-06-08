@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/UI/JumpBindingControl.cs" id="1_script"]
+
+[node name="JumpBindingControl" type="HBoxContainer"]
+custom_minimum_size = Vector2(0, 34)
+theme_override_constants/separation = 12
+script = ExtResource("1_script")
+
+[node name="JumpLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "Jump"
+
+[node name="JumpButton" type="Button" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3

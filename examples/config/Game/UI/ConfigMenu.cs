@@ -8,7 +8,10 @@ namespace ConfigExample.Game;
 public partial class ConfigMenu : PanelContainer
 {
     private ISettingsTransaction? _transaction;
+    private ISettingsMonitor<AudioOptions>? _audio;
+    private ISettingsMonitor<InputOptions>? _input;
     private ISettingsMonitor<GameplayOptions>? _gameplay;
+    private ISettingsMonitor<ProjectDefaultsOptions>? _project;
     private Button? _closeButton;
     private Button? _cancelButton;
     private Button? _saveButton;
@@ -20,7 +23,10 @@ public partial class ConfigMenu : PanelContainer
     public override void _Ready()
     {
         _transaction = this.GetRequiredService<ISettingsTransaction>();
+        _audio = this.GetRequiredService<ISettingsMonitor<AudioOptions>>();
+        _input = this.GetRequiredService<ISettingsMonitor<InputOptions>>();
         _gameplay = this.GetRequiredService<ISettingsMonitor<GameplayOptions>>();
+        _project = this.GetRequiredService<ISettingsMonitor<ProjectDefaultsOptions>>();
 
         _closeButton = GetNode<Button>("PanelMargin/PanelRoot/Header/CloseButton");
         _cancelButton = GetNode<Button>("PanelMargin/PanelRoot/Footer/CancelButton");
@@ -35,8 +41,16 @@ public partial class ConfigMenu : PanelContainer
             await _transaction.Save();
             Closed?.Invoke();
         };
-        _resetButton.Pressed += async () => await _gameplay.Reset();
+        _resetButton.Pressed += ResetAll;
         _filesButton.Pressed += OpenSettingsFolder;
+    }
+
+    private async void ResetAll()
+    {
+        await _audio!.Reset();
+        await _input!.Reset();
+        await _gameplay!.Reset();
+        await _project!.Reset();
     }
 
     private void Cancel()

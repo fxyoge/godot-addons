@@ -1,8 +1,13 @@
 [gd_scene format=3 uid="uid://cw7lb6jt53jko"]
 
 [ext_resource type="Script" uid="uid://cyphggoglxt56" path="res://Game/UI/ConfigMenu.cs" id="1_script"]
-[ext_resource type="PackedScene" path="res://Game/UI/DifficultyControl.tscn" id="2_difficulty"]
-[ext_resource type="PackedScene" path="res://Game/UI/SpawnRateControl.tscn" id="3_spawn"]
+[ext_resource type="PackedScene" path="res://Game/UI/MasterVolumeControl.tscn" id="2_master_volume"]
+[ext_resource type="PackedScene" path="res://Game/UI/MuteControl.tscn" id="3_mute"]
+[ext_resource type="PackedScene" path="res://Game/UI/JumpBindingControl.tscn" id="4_jump"]
+[ext_resource type="PackedScene" path="res://Game/UI/DifficultyControl.tscn" id="5_difficulty"]
+[ext_resource type="PackedScene" path="res://Game/UI/ShowDamageNumbersControl.tscn" id="6_damage"]
+[ext_resource type="PackedScene" path="res://Game/UI/SpawnRateControl.tscn" id="7_spawn"]
+[ext_resource type="PackedScene" path="res://Game/UI/GameTitleControl.tscn" id="8_title"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_config_panel"]
 bg_color = Color(0.08, 0.1, 0.12, 0.92)
@@ -18,10 +23,10 @@ corner_radius_bottom_left = 8
 
 [node name="ConfigMenu" type="PanelContainer" unique_id=1688590116 groups=["settings-transaction:config-menu"]]
 visible = false
-offset_left = -430.0
+offset_left = -560.0
 offset_top = 62.0
 offset_right = -18.0
-offset_bottom = 298.0
+offset_bottom = 548.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_config_panel")
 script = ExtResource("1_script")
 
@@ -51,10 +56,56 @@ custom_minimum_size = Vector2(34, 30)
 layout_mode = 2
 text = "X"
 
-[node name="DifficultyControl" parent="PanelMargin/PanelRoot" unique_id=1172624520 groups=["settings-transaction:config-menu"] instance=ExtResource("2_difficulty")]
+[node name="SettingsScroll" type="ScrollContainer" parent="PanelMargin/PanelRoot"]
+custom_minimum_size = Vector2(0, 340)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SettingsList" type="VBoxContainer" parent="PanelMargin/PanelRoot/SettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="AudioLabel" type="Label" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Audio"
+
+[node name="MasterVolumeControl" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList" groups=["settings-transaction:config-menu"] instance=ExtResource("2_master_volume")]
 layout_mode = 2
 
-[node name="SpawnRateControl" parent="PanelMargin/PanelRoot" unique_id=806412510 groups=["settings-transaction:config-menu"] instance=ExtResource("3_spawn")]
+[node name="MuteControl" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList" groups=["settings-transaction:config-menu"] instance=ExtResource("3_mute")]
+layout_mode = 2
+
+[node name="InputLabel" type="Label" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Input"
+
+[node name="JumpBindingControl" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList" groups=["settings-transaction:config-menu"] instance=ExtResource("4_jump")]
+layout_mode = 2
+
+[node name="GameplayLabel" type="Label" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Gameplay"
+
+[node name="DifficultyControl" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList" unique_id=1172624520 groups=["settings-transaction:config-menu"] instance=ExtResource("5_difficulty")]
+layout_mode = 2
+
+[node name="ShowDamageNumbersControl" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList" groups=["settings-transaction:config-menu"] instance=ExtResource("6_damage")]
+layout_mode = 2
+
+[node name="SpawnRateControl" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList" unique_id=806412510 groups=["settings-transaction:config-menu"] instance=ExtResource("7_spawn")]
+layout_mode = 2
+
+[node name="ProjectLabel" type="Label" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Project"
+
+[node name="GameTitleControl" parent="PanelMargin/PanelRoot/SettingsScroll/SettingsList" groups=["settings-transaction:config-menu"] instance=ExtResource("8_title")]
 layout_mode = 2
 
 [node name="Footer" type="HBoxContainer" parent="PanelMargin/PanelRoot" unique_id=1917213973]

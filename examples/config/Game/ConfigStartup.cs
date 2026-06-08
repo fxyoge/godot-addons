@@ -54,11 +54,7 @@ public sealed class ConfigStartup : IStartup
             project.Map(x => x.GameTitle)
                 .WithUi("Game Title", ConfigUiControl.Text)
                 .PersistAs("application/config/name")
-                .ToRuntime(
-                    new GodotProjectSettingBinding<string>(
-                        "application/config/name",
-                        runtimeMutable: false,
-                        requiresRestart: true));
+                .ToRuntime(new GodotWindowTitleBinding());
         });
     }
 

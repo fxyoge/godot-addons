@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/UI/MuteControl.cs" id="1_script"]
+
+[node name="MuteControl" type="HBoxContainer"]
+custom_minimum_size = Vector2(0, 34)
+theme_override_constants/separation = 12
+script = ExtResource("1_script")
+
+[node name="MuteLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "Mute"
+
+[node name="MuteCheckBox" type="CheckBox" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
