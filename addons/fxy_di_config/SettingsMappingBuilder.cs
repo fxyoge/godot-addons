@@ -130,25 +130,25 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
         Add(defaultValue, ConfigValueSource.UserConfig, runtimeBinding: null, codec);
     }
 
-    public void ToRuntime(IRuntimeConfigBinding<TValue> runtimeBinding, TValue fallbackDefault)
-        => ToRuntime(runtimeBinding, fallbackDefault, ScalarConfigValueCodec<TValue>.Instance);
+    public void ToRuntime(IRuntimeConfigBinding<TValue> runtimeBinding, TValue defaultValue)
+        => ToRuntime(runtimeBinding, defaultValue, ScalarConfigValueCodec<TValue>.Instance);
 
     public void ToRuntime(
         IRuntimeConfigBinding<TValue> runtimeBinding,
-        TValue fallbackDefault,
+        TValue defaultValue,
         IConfigValueCodec<TValue> codec)
     {
-        Add(fallbackDefault, runtimeBinding.Describe(_section, _key, _uiHint), runtimeBinding, codec);
+        Add(defaultValue, runtimeBinding.Describe(_section, _key, _uiHint), runtimeBinding, codec);
     }
 
     private void Add(
-        TValue fallbackDefault,
+        TValue defaultValue,
         ConfigValueSource source,
         IRuntimeConfigBinding<TValue>? runtimeBinding,
         IConfigValueCodec<TValue> codec)
     {
         Add(
-            fallbackDefault,
+            defaultValue,
             new ConfigEntryDescriptor(
                 _section,
                 _key,
@@ -163,7 +163,7 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
     }
 
     private void Add(
-        TValue fallbackDefault,
+        TValue defaultValue,
         ConfigEntryDescriptor descriptor,
         IRuntimeConfigBinding<TValue>? runtimeBinding,
         IConfigValueCodec<TValue> codec)
@@ -176,7 +176,7 @@ public sealed class SettingPropertyMappingBuilder<TOptions, TValue>
             _property,
             _getValue,
             _setValue,
-            fallbackDefault,
+            defaultValue,
             descriptor,
             runtimeBinding,
             codec));

@@ -6,47 +6,50 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<TValue>
 {
     private readonly string _settingPath;
-    private readonly TValue _fallbackDefault;
+    private readonly TValue _defaultValue;
     private readonly bool _runtimeMutable;
     private readonly bool _requiresRestart;
 
     public GodotProjectSettingBinding(
         string settingPath,
-        TValue fallbackDefault,
+        TValue defaultValue,
         bool runtimeMutable = true,
         bool requiresRestart = false)
     {
         _settingPath = settingPath;
-        _fallbackDefault = fallbackDefault;
+        _defaultValue = defaultValue;
         _runtimeMutable = runtimeMutable;
         _requiresRestart = requiresRestart;
     }
 
     public TValue ReadDefault()
-        => ReadCurrent();
+        => _defaultValue;
 
     public TValue ReadCurrent()
     {
         if (!ProjectSettings.HasSetting(_settingPath))
         {
-            return _fallbackDefault;
+            return _defaultValue;
         }
 
-        try
+        var value = ProjectSettings.GetSetting(_settingPath).Obj;
+        if (value is TValue typed)
         {
-            var value = ProjectSettings.GetSetting(_settingPath).Obj;
-            if (value is TValue typed)
+            return typed;
+        }
+
+        if (value is null)
+        {
+            if (default(TValue) is null)
             {
-                return typed;
+                return default!;
             }
 
-            return value is null ? _fallbackDefault : ConvertValue(value);
+            throw new InvalidOperationException(
+                $"ProjectSettings '{_settingPath}' is null and cannot be read as '{typeof(TValue).FullName}'.");
         }
-        catch (Exception ex)
-        {
-            GD.PushWarning($"fxy_di_config could not read ProjectSettings '{_settingPath}': {ex.Message}");
-            return _fallbackDefault;
-        }
+
+        return ConvertValue(value);
     }
 
     public void Apply(TValue value)
@@ -56,14 +59,7 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
             return;
         }
 
-        try
-        {
-            ProjectSettings.SetSetting(_settingPath, ToGodotValue(value));
-        }
-        catch (Exception ex)
-        {
-            GD.PushWarning($"fxy_di_config could not apply ProjectSettings '{_settingPath}': {ex.Message}");
-        }
+        ProjectSettings.SetSetting(_settingPath, ToGodotValue(value));
     }
 
     public ConfigEntryDescriptor Describe(string section, string key, ConfigUiHint? uiHint)

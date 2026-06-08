@@ -6,21 +6,21 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionBindings>
 {
     private readonly string _actionName;
-    private readonly InputActionBindings _fallbackBindings;
+    private readonly InputActionBindings _defaultBindings;
     private readonly bool _preserveUnsupportedEvents;
 
     public GodotInputActionBinding(
         string actionName,
-        InputActionBindings fallbackBindings,
+        InputActionBindings defaultBindings,
         bool preserveUnsupportedEvents = true)
     {
         _actionName = actionName;
-        _fallbackBindings = fallbackBindings;
+        _defaultBindings = defaultBindings;
         _preserveUnsupportedEvents = preserveUnsupportedEvents;
     }
 
     public InputActionBindings ReadDefault()
-        => ReadCurrent();
+        => _defaultBindings;
 
     public InputActionBindings ReadCurrent()
     {
@@ -35,7 +35,7 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
             }
         }
 
-        return bindings.Count == 0 ? _fallbackBindings : new InputActionBindings(bindings);
+        return new InputActionBindings(bindings);
     }
 
     public void Apply(InputActionBindings value)

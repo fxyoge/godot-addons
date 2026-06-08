@@ -8,7 +8,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
 {
     private readonly Func<TOptions, TValue> _getValue;
     private readonly Action<TOptions, TValue> _setValue;
-    private readonly TValue _fallbackDefault;
+    private readonly TValue _defaultValue;
     private readonly IRuntimeConfigBinding<TValue>? _runtimeBinding;
     private readonly IConfigValueCodec<TValue> _codec;
 
@@ -18,7 +18,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
         PropertyInfo property,
         Func<TOptions, TValue> getValue,
         Action<TOptions, TValue> setValue,
-        TValue fallbackDefault,
+        TValue defaultValue,
         ConfigEntryDescriptor descriptor,
         IRuntimeConfigBinding<TValue>? runtimeBinding,
         IConfigValueCodec<TValue> codec)
@@ -28,7 +28,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
         Property = property;
         _getValue = getValue;
         _setValue = setValue;
-        _fallbackDefault = fallbackDefault;
+        _defaultValue = defaultValue;
         Descriptor = descriptor;
         _runtimeBinding = runtimeBinding;
         _codec = codec;
@@ -44,7 +44,7 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
 
     public void LoadDefault(TOptions options)
     {
-        _setValue(options, _runtimeBinding is null ? _fallbackDefault : _runtimeBinding.ReadDefault());
+        _setValue(options, _runtimeBinding is null ? _defaultValue : _runtimeBinding.ReadDefault());
     }
 
     public void LoadOverlay(TOptions options, IConfigOverlayStore store)

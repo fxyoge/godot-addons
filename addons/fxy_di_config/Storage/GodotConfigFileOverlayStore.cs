@@ -32,17 +32,8 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
 
         var stored = _configFile.GetValue(section, key).Obj;
 
-        try
-        {
-            value = ConvertValue<TValue>(stored);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            GD.PushWarning($"fxy_di_config ignored invalid value '{section}/{key}' in '{_path}': {ex.Message}");
-            value = default!;
-            return false;
-        }
+        value = ConvertValue<TValue>(stored);
+        return true;
     }
 
     public void Set<TValue>(string section, string key, TValue value)
@@ -86,7 +77,13 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
     {
         if (value is null)
         {
-            return default!;
+            if (default(TValue) is null)
+            {
+                return default!;
+            }
+
+            throw new InvalidOperationException(
+                $"Cannot convert null config value to '{typeof(TValue).FullName}'.");
         }
 
         if (value is TValue typed)

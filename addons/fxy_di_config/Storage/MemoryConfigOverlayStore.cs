@@ -12,14 +12,26 @@ public sealed class MemoryConfigOverlayStore : IConfigOverlayStore
 
     public bool TryGet<TValue>(string section, string key, out TValue value)
     {
-        if (_values.TryGetValue(GetStoreKey(section, key), out var stored) && stored is TValue typed)
+        if (!_values.TryGetValue(GetStoreKey(section, key), out var stored))
+        {
+            value = default!;
+            return false;
+        }
+
+        if (stored is TValue typed)
         {
             value = typed;
             return true;
         }
 
-        value = default!;
-        return false;
+        if (stored is null && default(TValue) is null)
+        {
+            value = default!;
+            return true;
+        }
+
+        throw new System.InvalidOperationException(
+            $"Stored config value '{section}/{key}' is '{stored?.GetType().FullName ?? "null"}', not '{typeof(TValue).FullName}'.");
     }
 
     public void Set<TValue>(string section, string key, TValue value)

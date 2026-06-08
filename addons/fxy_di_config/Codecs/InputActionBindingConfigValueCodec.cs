@@ -36,10 +36,7 @@ public sealed class InputActionBindingConfigValueCodec : IConfigValueCodec<Input
                 return true;
             }
 
-            if (TryReadBinding(store, section, prefix, type, out var binding))
-            {
-                bindings.Add(binding);
-            }
+            bindings.Add(ReadBinding(store, section, prefix, type));
         }
 
         if (bindings.Count == 0)
@@ -82,75 +79,76 @@ public sealed class InputActionBindingConfigValueCodec : IConfigValueCodec<Input
         }
     }
 
-    private bool TryReadBinding(
+    private InputBinding ReadBinding(
         IConfigOverlayStore store,
         string section,
         string prefix,
-        string type,
-        out InputBinding binding)
+        string type)
     {
-        binding = null!;
-
         switch (type)
         {
             case "key":
                 if (!store.TryGet<long>(section, $"{prefix}/key_code", out var keyCode))
                 {
-                    return false;
+                    throw MissingBindingValue(section, prefix, "key_code");
                 }
 
-                binding = WithDisplayName(new KeyInputBinding(
+                return WithDisplayName(new KeyInputBinding(
                     keyCode,
                     keyCode.ToString(),
                     ReadBool(store, section, prefix, "ctrl"),
                     ReadBool(store, section, prefix, "alt"),
                     ReadBool(store, section, prefix, "shift"),
                     ReadBool(store, section, prefix, "meta")));
-                return true;
 
             case "mouse_button":
                 if (!store.TryGet<long>(section, $"{prefix}/button_index", out var buttonIndex))
                 {
-                    return false;
+                    throw MissingBindingValue(section, prefix, "button_index");
                 }
 
-                binding = WithDisplayName(new MouseButtonInputBinding(
+                return WithDisplayName(new MouseButtonInputBinding(
                     buttonIndex,
                     $"Mouse {buttonIndex}",
                     ReadBool(store, section, prefix, "ctrl"),
                     ReadBool(store, section, prefix, "alt"),
                     ReadBool(store, section, prefix, "shift"),
                     ReadBool(store, section, prefix, "meta")));
-                return true;
 
             case "joypad_button":
                 if (!store.TryGet<long>(section, $"{prefix}/button_index", out var joypadButton))
                 {
-                    return false;
+                    throw MissingBindingValue(section, prefix, "button_index");
                 }
 
-                binding = WithDisplayName(new JoypadButtonInputBinding(
+                return WithDisplayName(new JoypadButtonInputBinding(
                     joypadButton,
                     $"Joypad Button {joypadButton}"));
-                return true;
 
             case "joypad_axis":
                 if (!store.TryGet<long>(section, $"{prefix}/axis", out var axis)
                     || !store.TryGet<float>(section, $"{prefix}/axis_value", out var axisValue))
                 {
-                    return false;
+                    throw new InvalidOperationException(
+                        $"Config input binding '{section}/{prefix}' is missing 'axis' or 'axis_value'.");
                 }
 
-                binding = WithDisplayName(new JoypadAxisInputBinding(
+                return WithDisplayName(new JoypadAxisInputBinding(
                     axis,
                     axisValue,
                     $"Joypad Axis {axis} {(axisValue >= 0 ? "+" : "-")}"));
-                return true;
 
             default:
-                return false;
+                throw new InvalidOperationException(
+                    $"Config input binding '{section}/{prefix}' has unsupported type '{type}'.");
         }
     }
+
+    private static InvalidOperationException MissingBindingValue(
+        string section,
+        string prefix,
+        string key)
+        => new($"Config input binding '{section}/{prefix}' is missing '{key}'.");
 
     private void WriteBinding(IConfigOverlayStore store, string section, string prefix, InputBinding binding)
     {

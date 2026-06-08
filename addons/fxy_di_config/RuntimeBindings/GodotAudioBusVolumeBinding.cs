@@ -1,3 +1,4 @@
+using System;
 using Godot;
 
 namespace Fxyoge.DependencyInjection.Configuration;
@@ -5,36 +6,26 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public sealed class GodotAudioBusVolumeBinding : IRuntimeConfigBinding<float>
 {
     private readonly string _busName;
-    private readonly float _fallbackLinearVolume;
+    private readonly float _defaultLinearVolume;
 
-    public GodotAudioBusVolumeBinding(string busName, float fallbackLinearVolume)
+    public GodotAudioBusVolumeBinding(string busName, float defaultLinearVolume)
     {
         _busName = busName;
-        _fallbackLinearVolume = fallbackLinearVolume;
+        _defaultLinearVolume = defaultLinearVolume;
     }
 
     public float ReadDefault()
-        => ReadCurrent();
+        => _defaultLinearVolume;
 
     public float ReadCurrent()
     {
         var busIndex = GetBusIndex();
-        if (busIndex < 0)
-        {
-            return _fallbackLinearVolume;
-        }
-
         return Mathf.DbToLinear(AudioServer.GetBusVolumeDb(busIndex));
     }
 
     public void Apply(float value)
     {
         var busIndex = GetBusIndex();
-        if (busIndex < 0)
-        {
-            return;
-        }
-
         AudioServer.SetBusVolumeDb(busIndex, Mathf.LinearToDb(Mathf.Clamp(value, 0.0001f, 1.0f)));
     }
 
@@ -54,7 +45,7 @@ public sealed class GodotAudioBusVolumeBinding : IRuntimeConfigBinding<float>
         var busIndex = AudioServer.GetBusIndex(_busName);
         if (busIndex < 0)
         {
-            GD.PushWarning($"fxy_di_config could not find audio bus '{_busName}'.");
+            throw new InvalidOperationException($"fxy_di_config could not find audio bus '{_busName}'.");
         }
 
         return busIndex;

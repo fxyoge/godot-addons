@@ -21,6 +21,19 @@ public sealed class SettingsMonitorTests
     }
 
     [Fact]
+    public void CurrentValueThrowsWhenOverlayValueHasInvalidType()
+    {
+        var services = CreateServices(store: out var store);
+        store.Set<object>("settings", "volume", "loud");
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => services.GetRequiredService<ISettingsMonitor<TestOptions>>());
+
+        Assert.Contains("settings/volume", ex.Message);
+        Assert.Contains(typeof(float).FullName!, ex.Message);
+    }
+
+    [Fact]
     public async Task UpdateStoresAppliesSavesAndNotifies()
     {
         var services = CreateServices(store: out var store);
@@ -316,6 +329,38 @@ public sealed class SettingsMonitorTests
         Assert.True(store.TryGet<string>("input", "jump/0/type", out var emptyType));
         Assert.Equal("none", emptyType);
         Assert.False(store.TryGet<string>("input", "jump/1/type", out _));
+    }
+
+    [Fact]
+    public void InputActionBindingsThrowWhenPersistedBindingIsMalformed()
+    {
+        var store = new MemoryConfigOverlayStore();
+        var services = new ServiceCollection();
+        var runtime = new TestRuntimeBinding<InputActionBindings>(InputActionBindings.FromKeyCode(32));
+
+        store.Set("input", "jump/0/type", "key");
+        services.AddSingleton<IConfigOverlayStore>(store);
+        services.AddSettings<InputTestOptions>("input", input =>
+        {
+            input.Map(x => x.Jump)
+                .PersistAs("jump")
+                .ToRuntime(
+                    runtime,
+                    InputActionBindings.FromKeyCode(32),
+                    InputActionBindingConfigValueCodec.Instance);
+        });
+
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        });
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => provider.GetRequiredService<ISettingsMonitor<InputTestOptions>>());
+
+        Assert.Contains("input/jump/0", ex.Message);
+        Assert.Contains("key_code", ex.Message);
     }
 
     [Fact]

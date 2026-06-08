@@ -1,3 +1,4 @@
+using System;
 using Godot;
 
 namespace Fxyoge.DependencyInjection.Configuration;
@@ -5,30 +6,27 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public sealed class GodotAudioBusMuteBinding : IRuntimeConfigBinding<bool>
 {
     private readonly string _busName;
-    private readonly bool _fallbackMuted;
+    private readonly bool _defaultMuted;
 
-    public GodotAudioBusMuteBinding(string busName, bool fallbackMuted)
+    public GodotAudioBusMuteBinding(string busName, bool defaultMuted)
     {
         _busName = busName;
-        _fallbackMuted = fallbackMuted;
+        _defaultMuted = defaultMuted;
     }
 
     public bool ReadDefault()
-        => ReadCurrent();
+        => _defaultMuted;
 
     public bool ReadCurrent()
     {
         var busIndex = GetBusIndex();
-        return busIndex < 0 ? _fallbackMuted : AudioServer.IsBusMute(busIndex);
+        return AudioServer.IsBusMute(busIndex);
     }
 
     public void Apply(bool value)
     {
         var busIndex = GetBusIndex();
-        if (busIndex >= 0)
-        {
-            AudioServer.SetBusMute(busIndex, value);
-        }
+        AudioServer.SetBusMute(busIndex, value);
     }
 
     public ConfigEntryDescriptor Describe(string section, string key, ConfigUiHint? uiHint)
@@ -47,7 +45,7 @@ public sealed class GodotAudioBusMuteBinding : IRuntimeConfigBinding<bool>
         var busIndex = AudioServer.GetBusIndex(_busName);
         if (busIndex < 0)
         {
-            GD.PushWarning($"fxy_di_config could not find audio bus '{_busName}'.");
+            throw new InvalidOperationException($"fxy_di_config could not find audio bus '{_busName}'.");
         }
 
         return busIndex;
