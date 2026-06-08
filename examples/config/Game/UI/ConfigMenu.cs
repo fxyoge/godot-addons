@@ -52,10 +52,8 @@ public partial class ConfigMenu : PanelContainer
             settingsDirectory,
             DirAccess.MakeDirRecursiveAbsolute(settingsDirectory));
 
-        var error = OS.ShellOpen(settingsDirectory);
-        if (error != Error.Ok)
-        {
-            GD.PushWarning($"Could not open settings folder '{settingsDirectory}': {error}");
-        }
+        ConfigMenuErrors.ThrowIfShellOpenFailed(
+            settingsDirectory,
+            OS.ShellOpen(settingsDirectory));
     }
 }

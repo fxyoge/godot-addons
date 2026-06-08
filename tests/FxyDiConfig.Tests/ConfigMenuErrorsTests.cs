@@ -20,4 +20,16 @@ public sealed class ConfigMenuErrorsTests
         Assert.Contains("/settings", ex.Message);
         Assert.Contains(nameof(Error.FileNoPermission), ex.Message);
     }
+
+    [Fact]
+    public void ThrowIfShellOpenFailedThrowsWhenFolderCannotBeOpened()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => ConfigMenuErrors.ThrowIfShellOpenFailed(
+                "/settings",
+                Error.FileNotFound));
+
+        Assert.Contains("/settings", ex.Message);
+        Assert.Contains(nameof(Error.FileNotFound), ex.Message);
+    }
 }
