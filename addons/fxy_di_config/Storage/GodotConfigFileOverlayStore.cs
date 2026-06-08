@@ -14,11 +14,15 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
 
         if (FileAccess.FileExists(_path))
         {
-            var error = _configFile.Load(_path);
-            if (error != Error.Ok)
-            {
-                GD.PushWarning($"fxy_di_config could not load '{_path}': {error}");
-            }
+            ThrowIfLoadFailed(_path, _configFile.Load(_path));
+        }
+    }
+
+    internal static void ThrowIfLoadFailed(string path, Error error)
+    {
+        if (error != Error.Ok)
+        {
+            throw new InvalidOperationException($"fxy_di_config could not load '{path}': {error}");
         }
     }
 

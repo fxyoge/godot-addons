@@ -1,4 +1,5 @@
 using Fxyoge.DependencyInjection.Configuration;
+using Godot;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
@@ -31,6 +32,18 @@ public sealed class SettingsMonitorTests
 
         Assert.Contains("settings/volume", ex.Message);
         Assert.Contains(typeof(float).FullName!, ex.Message);
+    }
+
+    [Fact]
+    public void GodotConfigFileOverlayStoreThrowsWhenExistingConfigCannotLoad()
+    {
+        var path = "user://missing-settings.cfg";
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => GodotConfigFileOverlayStore.ThrowIfLoadFailed(path, Error.FileCantOpen));
+
+        Assert.Contains(path, ex.Message);
+        Assert.Contains(nameof(Error.FileCantOpen), ex.Message);
     }
 
     [Fact]
