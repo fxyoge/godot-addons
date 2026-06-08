@@ -42,7 +42,7 @@ internal static class StartupDiscovery
         return startups;
     }
 
-    private static IEnumerable<Type> GetStartupTypes(Assembly assembly)
+    internal static IEnumerable<Type> GetStartupTypes(Assembly assembly)
     {
         Type[] types;
 
@@ -52,10 +52,15 @@ internal static class StartupDiscovery
         }
         catch (ReflectionTypeLoadException ex)
         {
-            GD.PushWarning(
-                $"fxy_di skipped assembly '{assembly.FullName}' because one or more types could not be loaded: {ex.Message}");
+            var loaderMessages = string.Join(
+                System.Environment.NewLine,
+                ex.LoaderExceptions
+                    .Where(loaderException => loaderException is not null)
+                    .Select(loaderException => loaderException!.Message));
 
-            return Array.Empty<Type>();
+            throw new InvalidOperationException(
+                $"Could not scan assembly '{assembly.FullName}' for startup types because one or more types could not be loaded.{System.Environment.NewLine}{loaderMessages}",
+                ex);
         }
         catch (Exception ex)
         {
