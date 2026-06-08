@@ -64,9 +64,9 @@ internal static class StartupDiscovery
         }
         catch (Exception ex)
         {
-            GD.PushWarning($"fxy_di skipped assembly '{assembly.FullName}' while scanning for startups: {ex.Message}");
-
-            return Array.Empty<Type>();
+            throw new InvalidOperationException(
+                $"Could not scan assembly '{assembly.FullName}' for startup types.",
+                ex);
         }
 
         return types.Where(IsStartupType);

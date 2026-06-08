@@ -22,6 +22,19 @@ public sealed class StartupDiscoveryTests
         Assert.Contains(loaderException.Message, ex.Message);
     }
 
+    [Fact]
+    public void GetStartupTypesThrowsWhenAssemblyScanFails()
+    {
+        var scanException = new InvalidOperationException("scan failed");
+        var assembly = new ThrowingAssembly(scanException);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => StartupDiscovery.GetStartupTypes(assembly));
+
+        Assert.Contains(assembly.FullName, ex.Message);
+        Assert.Same(scanException, ex.InnerException);
+    }
+
     private sealed class ThrowingAssembly : Assembly
     {
         private readonly Exception _exception;
