@@ -20,6 +20,9 @@ public sealed class GodotInputActionBinding : IRuntimeConfigBinding<InputActionB
     }
 
     public InputActionBindings ReadDefault()
+        => ReadCurrent();
+
+    public InputActionBindings ReadCurrent()
     {
         EnsureAction();
 

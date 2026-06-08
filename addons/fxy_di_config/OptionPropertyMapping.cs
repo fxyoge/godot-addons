@@ -60,9 +60,37 @@ internal sealed class OptionPropertyMapping<TOptions, TValue> : IOptionPropertyM
         _codec.Write(store, Section, Key, _getValue(options));
     }
 
+    public object? CaptureRuntime()
+        => _runtimeBinding is null
+            ? null
+            : ConfigMappedValue.Copy(_runtimeBinding.ReadCurrent());
+
     public void Apply(TOptions options)
     {
         _runtimeBinding?.Apply(_getValue(options));
+    }
+
+    public void RestoreRuntime(object? snapshot)
+    {
+        if (_runtimeBinding is null)
+        {
+            return;
+        }
+
+        if (snapshot is TValue typed)
+        {
+            _runtimeBinding.Apply(typed);
+            return;
+        }
+
+        if (snapshot is null && default(TValue) is null)
+        {
+            _runtimeBinding.Apply(default!);
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Runtime snapshot for mapped setting '{Section}/{Key}' is not '{typeof(TValue).FullName}'.");
     }
 
     public TRequested GetValue<TRequested>(TOptions options)

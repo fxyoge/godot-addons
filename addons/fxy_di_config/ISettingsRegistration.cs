@@ -24,7 +24,11 @@ public interface IOptionPropertyMapping<TOptions>
 
     void CaptureOverlay(TOptions options, IConfigOverlayStore store);
 
+    object? CaptureRuntime();
+
     void Apply(TOptions options);
+
+    void RestoreRuntime(object? snapshot);
 
     TValue GetValue<TValue>(TOptions options);
 

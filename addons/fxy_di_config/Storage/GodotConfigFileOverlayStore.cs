@@ -58,6 +58,21 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
         }
     }
 
+    public IConfigOverlayStoreSnapshot CreateSnapshot()
+        => new Snapshot(CloneConfigFile(_configFile));
+
+    public void RestoreSnapshot(IConfigOverlayStoreSnapshot snapshot)
+    {
+        if (snapshot is not Snapshot godotSnapshot)
+        {
+            throw new ArgumentException(
+                $"Snapshot must be created by '{nameof(GodotConfigFileOverlayStore)}'.",
+                nameof(snapshot));
+        }
+
+        CopyConfigFile(godotSnapshot.ConfigFile, _configFile);
+    }
+
     public void Save()
     {
         var error = _configFile.Save(_path);
@@ -106,4 +121,29 @@ public sealed class GodotConfigFileOverlayStore : IConfigOverlayStore
             _ => throw new NotSupportedException(
                 $"fxy_di_config cannot persist '{typeof(TValue).FullName}' as a Godot ConfigFile value. Map complex values through a Godot-native binding."),
         };
+
+    private static ConfigFile CloneConfigFile(ConfigFile source)
+    {
+        var clone = new ConfigFile();
+        CopyConfigFile(source, clone);
+        return clone;
+    }
+
+    private static void CopyConfigFile(ConfigFile source, ConfigFile target)
+    {
+        foreach (var section in target.GetSections())
+        {
+            target.EraseSection(section);
+        }
+
+        foreach (var section in source.GetSections())
+        {
+            foreach (var key in source.GetSectionKeys(section))
+            {
+                target.SetValue(section, key, source.GetValue(section, key));
+            }
+        }
+    }
+
+    private sealed record Snapshot(ConfigFile ConfigFile) : IConfigOverlayStoreSnapshot;
 }

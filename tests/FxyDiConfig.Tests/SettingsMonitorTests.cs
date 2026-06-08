@@ -58,6 +58,48 @@ public sealed class SettingsMonitorTests
     }
 
     [Fact]
+    public async Task SaveFailureDoesNotApplyPublishOrRetainOverlay()
+    {
+        var services = CreateServices(store: out var store);
+        var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+        var notificationCount = 0;
+        store.SaveException = new InvalidOperationException("save failed");
+
+        monitor.OnChange(_ => notificationCount++);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await monitor.Set(options => options.Volume, 0.25f));
+
+        Assert.Equal(0.75f, monitor.CurrentValue.Volume);
+        Assert.Equal(0.75f, runtime.AppliedValue);
+        Assert.False(store.TryGet<float>("settings", "volume", out _));
+        Assert.Equal(0, notificationCount);
+    }
+
+    [Fact]
+    public async Task RuntimeFailureRestoresOverlayAndRuntime()
+    {
+        var services = CreateServices(store: out var store);
+        var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+        var notificationCount = 0;
+
+        await monitor.Set(options => options.Volume, 0.5f);
+        runtime.RejectedValue = 0.25f;
+        monitor.OnChange(_ => notificationCount++);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await monitor.Set(options => options.Volume, 0.25f));
+
+        Assert.Equal(0.5f, monitor.CurrentValue.Volume);
+        Assert.Equal(0.5f, runtime.AppliedValue);
+        Assert.True(store.TryGet<float>("settings", "volume", out var stored));
+        Assert.Equal(0.5f, stored);
+        Assert.Equal(0, notificationCount);
+    }
+
+    [Fact]
     public async Task UpdateTransformsTargetProperty()
     {
         var services = CreateServices(store: out _);
@@ -119,6 +161,34 @@ public sealed class SettingsMonitorTests
         Assert.True(storedMuted);
         Assert.False(store.TryGet<float>("settings", "volume", out _));
         Assert.False(store.TryGet<string>("settings", "difficulty", out _));
+    }
+
+    [Fact]
+    public async Task TransactionSaveFailureDoesNotApplyPublishOrRetainOverlay()
+    {
+        var services = CreateServices(store: out var store);
+        var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+        var transaction = new SettingsTransaction(store);
+        var transactional = new TransactionalSettingsMonitor<TestOptions>(
+            services.GetRequiredService<SettingsMonitor<TestOptions>>(),
+            transaction,
+            services.GetServices<ISettingsRegistration<TestOptions>>());
+        var liveNotificationCount = 0;
+
+        monitor.OnChange(_ => liveNotificationCount++);
+        await transactional.Set(options => options.Volume, 0.5f);
+        store.SaveException = new InvalidOperationException("save failed");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await transaction.Save());
+
+        Assert.Equal(0.75f, monitor.CurrentValue.Volume);
+        Assert.Equal(0.5f, transactional.CurrentValue.Volume);
+        Assert.Equal(0.75f, runtime.AppliedValue);
+        Assert.False(store.TryGet<float>("settings", "volume", out _));
+        Assert.True(transaction.HasChanges);
+        Assert.Equal(0, liveNotificationCount);
     }
 
     [Fact]
@@ -425,10 +495,19 @@ public sealed class SettingsMonitorTests
 
         public TValue AppliedValue { get; private set; }
 
+        public TValue? RejectedValue { get; set; }
+
         public TValue ReadDefault() => DefaultValue;
+
+        public TValue ReadCurrent() => AppliedValue;
 
         public void Apply(TValue value)
         {
+            if (Equals(value, RejectedValue))
+            {
+                throw new InvalidOperationException("runtime apply failed");
+            }
+
             AppliedValue = value;
         }
 

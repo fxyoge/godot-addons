@@ -14,6 +14,9 @@ public sealed class GodotAudioBusVolumeBinding : IRuntimeConfigBinding<float>
     }
 
     public float ReadDefault()
+        => ReadCurrent();
+
+    public float ReadCurrent()
     {
         var busIndex = GetBusIndex();
         if (busIndex < 0)

@@ -23,6 +23,9 @@ public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<T
     }
 
     public TValue ReadDefault()
+        => ReadCurrent();
+
+    public TValue ReadCurrent()
     {
         if (!ProjectSettings.HasSetting(_settingPath))
         {

@@ -10,6 +10,7 @@ public partial class SpawnRateControl : HBoxContainer
     private HSlider? _slider;
     private Label? _valueLabel;
     private System.IDisposable? _subscription;
+    private bool _isDragging;
 
     public override void _Ready()
     {
@@ -19,7 +20,20 @@ public partial class SpawnRateControl : HBoxContainer
 
         _slider.ValueChanged += async value =>
         {
-            await _gameplay.Set(options => options.SpawnRate, (float)value);
+            RefreshLabel((float)value);
+            if (!_isDragging)
+            {
+                await _gameplay.Set(options => options.SpawnRate, (float)value);
+            }
+        };
+        _slider.DragStarted += () => _isDragging = true;
+        _slider.DragEnded += async valueChanged =>
+        {
+            _isDragging = false;
+            if (valueChanged)
+            {
+                await _gameplay.Set(options => options.SpawnRate, (float)_slider.Value);
+            }
         };
 
         _subscription = _gameplay.OnChange(_ => CallDeferred(MethodName.Refresh));
@@ -41,6 +55,14 @@ public partial class SpawnRateControl : HBoxContainer
 
         var spawnRate = _gameplay!.CurrentValue.SpawnRate;
         _slider.SetValueNoSignal(spawnRate);
-        _valueLabel.Text = $"{spawnRate:0.00}x";
+        RefreshLabel(spawnRate);
+    }
+
+    private void RefreshLabel(float spawnRate)
+    {
+        if (_valueLabel is not null)
+        {
+            _valueLabel.Text = $"{spawnRate:0.00}x";
+        }
     }
 }

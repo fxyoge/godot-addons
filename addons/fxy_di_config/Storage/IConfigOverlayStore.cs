@@ -8,5 +8,13 @@ public interface IConfigOverlayStore
 
     void Remove(string section, string key);
 
+    IConfigOverlayStoreSnapshot CreateSnapshot();
+
+    void RestoreSnapshot(IConfigOverlayStoreSnapshot snapshot);
+
     void Save();
+}
+
+public interface IConfigOverlayStoreSnapshot
+{
 }

@@ -10,7 +10,6 @@ namespace Fxyoge.DependencyInjection.Configuration;
 
 public sealed class TransactionalSettingsMonitor<TOptions> :
     ISettingsMonitor<TOptions>,
-    ITransactionalSettingsParticipant,
     IDisposable
     where TOptions : class, new()
 {
@@ -42,7 +41,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         _mappingsByProperty = _mappings.ToDictionary(mapping => mapping.Property);
         _currentValue = CloneMapped(_liveMonitor.CurrentValue);
         _liveSubscription = _liveMonitor.OnChange(SyncFromLive);
-        _transaction.Enlist(this);
+        _transaction.Enlist(this, () => HasChanges, PrepareSaveToLive, Abandon);
     }
 
     public TOptions CurrentValue
@@ -119,7 +118,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
     public ValueTask Save() => _transaction.Save();
 
-    public async ValueTask SaveToLive()
+    private IPreparedSettingsCommit PrepareSaveToLive()
     {
         TOptions value;
         bool pendingReset;
@@ -134,25 +133,30 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
         if (!pendingReset && changedMappings.Length == 0)
         {
-            return;
+            return PreparedSettingsCommit.Empty;
         }
 
+        IPreparedSettingsCommit preparedCommit;
         if (pendingReset)
         {
-            await _liveMonitor.Reset(save: false);
+            preparedCommit = _liveMonitor.PrepareReset();
+        }
+        else
+        {
+            preparedCommit = _liveMonitor.PrepareCommit(value, changedMappings);
         }
 
-        if (changedMappings.Length > 0)
-        {
-            await _liveMonitor.Commit(value, changedMappings, save: false);
-        }
-
-        lock (_sync)
-        {
-            _currentValue = CloneMapped(_liveMonitor.CurrentValue);
-            _pendingReset = false;
-            _changedMappings.Clear();
-        }
+        return new TransactionalPreparedSettingsCommit(
+            preparedCommit,
+            () =>
+            {
+                lock (_sync)
+                {
+                    _currentValue = CloneMapped(_liveMonitor.CurrentValue);
+                    _pendingReset = false;
+                    _changedMappings.Clear();
+                }
+            });
     }
 
     public void Abandon()
@@ -295,6 +299,30 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
             _dispose();
             _isDisposed = true;
+        }
+    }
+
+    private sealed class TransactionalPreparedSettingsCommit : IPreparedSettingsCommit
+    {
+        private readonly IPreparedSettingsCommit _inner;
+        private readonly Action _publishDraftState;
+
+        public TransactionalPreparedSettingsCommit(
+            IPreparedSettingsCommit inner,
+            Action publishDraftState)
+        {
+            _inner = inner;
+            _publishDraftState = publishDraftState;
+        }
+
+        public void ApplyRuntime() => _inner.ApplyRuntime();
+
+        public void RollbackRuntime() => _inner.RollbackRuntime();
+
+        public void Publish()
+        {
+            _inner.Publish();
+            _publishDraftState();
         }
     }
 }

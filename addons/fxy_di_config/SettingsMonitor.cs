@@ -102,17 +102,36 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         {
             var next = CloneMapped(_currentValue);
             mapping.SetValue(next, value);
+            var overlaySnapshot = _store.CreateSnapshot();
 
-            if (captureOverlay)
+            try
             {
-                mapping.CaptureOverlay(next, _store);
+                if (captureOverlay)
+                {
+                    mapping.CaptureOverlay(next, _store);
+                }
+
+                if (save)
+                {
+                    _store.Save();
+                }
+            }
+            catch
+            {
+                _store.RestoreSnapshot(overlaySnapshot);
+                throw;
             }
 
-            mapping.Apply(next);
-
-            if (save)
+            var runtimeSnapshots = CaptureRuntime(new[] { mapping });
+            try
             {
-                _store.Save();
+                mapping.Apply(next);
+            }
+            catch
+            {
+                RestoreRuntime(runtimeSnapshots);
+                RestoreOverlay(overlaySnapshot, save);
+                throw;
             }
 
             _currentValue = CloneMapped(next);
@@ -140,17 +159,40 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         {
             var next = CloneMapped(_currentValue);
             var changed = changedMappings.ToArray();
+            var overlaySnapshot = _store.CreateSnapshot();
 
-            foreach (var mapping in changed)
+            try
             {
-                CopyMappedValue(mapping, value, next);
-                mapping.CaptureOverlay(next, _store);
-                mapping.Apply(next);
+                foreach (var mapping in changed)
+                {
+                    CopyMappedValue(mapping, value, next);
+                    mapping.CaptureOverlay(next, _store);
+                }
+
+                if (save)
+                {
+                    _store.Save();
+                }
+            }
+            catch
+            {
+                _store.RestoreSnapshot(overlaySnapshot);
+                throw;
             }
 
-            if (save)
+            var runtimeSnapshots = CaptureRuntime(changed);
+            try
             {
-                _store.Save();
+                foreach (var mapping in changed)
+                {
+                    mapping.Apply(next);
+                }
+            }
+            catch
+            {
+                RestoreRuntime(runtimeSnapshots);
+                RestoreOverlay(overlaySnapshot, save);
+                throw;
             }
 
             _currentValue = CloneMapped(next);
@@ -174,17 +216,37 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
 
         lock (_sync)
         {
-            foreach (var mapping in _mappings)
+            var overlaySnapshot = _store.CreateSnapshot();
+
+            try
             {
-                mapping.ResetOverlay(_store);
+                foreach (var mapping in _mappings)
+                {
+                    mapping.ResetOverlay(_store);
+                }
+
+                if (save)
+                {
+                    _store.Save();
+                }
+            }
+            catch
+            {
+                _store.RestoreSnapshot(overlaySnapshot);
+                throw;
             }
 
             next = LoadCurrentValue();
-            Apply(next);
-
-            if (save)
+            var runtimeSnapshots = CaptureRuntime(_mappings);
+            try
             {
-                _store.Save();
+                Apply(next);
+            }
+            catch
+            {
+                RestoreRuntime(runtimeSnapshots);
+                RestoreOverlay(overlaySnapshot, save);
+                throw;
             }
 
             _currentValue = CloneMapped(next);
@@ -198,6 +260,39 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    internal IPreparedSettingsCommit PrepareCommit(
+        TOptions value,
+        IEnumerable<IOptionPropertyMapping<TOptions>> changedMappings)
+    {
+        lock (_sync)
+        {
+            var next = CloneMapped(_currentValue);
+            var changed = changedMappings.ToArray();
+
+            foreach (var mapping in changed)
+            {
+                CopyMappedValue(mapping, value, next);
+                mapping.CaptureOverlay(next, _store);
+            }
+
+            return new PreparedSettingsCommit(this, next, changed);
+        }
+    }
+
+    internal IPreparedSettingsCommit PrepareReset()
+    {
+        lock (_sync)
+        {
+            foreach (var mapping in _mappings)
+            {
+                mapping.ResetOverlay(_store);
+            }
+
+            var next = LoadCurrentValue();
+            return new PreparedSettingsCommit(this, next, _mappings);
+        }
     }
 
     private TOptions LoadCurrentValue()
@@ -252,6 +347,97 @@ public sealed class SettingsMonitor<TOptions> : ISettingsMonitor<TOptions>
         TOptions target)
     {
         mapping.CopyValue(source, target);
+    }
+
+    private IReadOnlyList<RuntimeSnapshot> CaptureRuntime(
+        IEnumerable<IOptionPropertyMapping<TOptions>> mappings)
+        => mappings
+            .Select(mapping => new RuntimeSnapshot(mapping, mapping.CaptureRuntime()))
+            .ToArray();
+
+    private static void RestoreRuntime(IEnumerable<RuntimeSnapshot> snapshots)
+    {
+        foreach (var snapshot in snapshots.Reverse())
+        {
+            snapshot.Mapping.RestoreRuntime(snapshot.Value);
+        }
+    }
+
+    private void RestoreOverlay(IConfigOverlayStoreSnapshot snapshot, bool save)
+    {
+        _store.RestoreSnapshot(snapshot);
+        if (save)
+        {
+            _store.Save();
+        }
+    }
+
+    private void PublishPrepared(TOptions next)
+    {
+        IReadOnlyList<Action<TOptions, string>> listeners;
+        TOptions publishedValue;
+
+        lock (_sync)
+        {
+            _currentValue = CloneMapped(next);
+            publishedValue = CloneMapped(_currentValue);
+            listeners = _listeners.ToArray();
+        }
+
+        foreach (var listener in listeners)
+        {
+            listener(CloneMapped(publishedValue), Options.DefaultName);
+        }
+    }
+
+    private sealed record RuntimeSnapshot(
+        IOptionPropertyMapping<TOptions> Mapping,
+        object? Value);
+
+    private sealed class PreparedSettingsCommit : IPreparedSettingsCommit
+    {
+        private readonly SettingsMonitor<TOptions> _monitor;
+        private readonly TOptions _next;
+        private readonly IReadOnlyList<IOptionPropertyMapping<TOptions>> _changedMappings;
+        private IReadOnlyList<RuntimeSnapshot>? _runtimeSnapshots;
+
+        public PreparedSettingsCommit(
+            SettingsMonitor<TOptions> monitor,
+            TOptions next,
+            IReadOnlyList<IOptionPropertyMapping<TOptions>> changedMappings)
+        {
+            _monitor = monitor;
+            _next = next;
+            _changedMappings = changedMappings;
+        }
+
+        public void ApplyRuntime()
+        {
+            _runtimeSnapshots = _monitor.CaptureRuntime(_changedMappings);
+
+            try
+            {
+                foreach (var mapping in _changedMappings)
+                {
+                    mapping.Apply(_next);
+                }
+            }
+            catch
+            {
+                RollbackRuntime();
+                throw;
+            }
+        }
+
+        public void RollbackRuntime()
+        {
+            if (_runtimeSnapshots is not null)
+            {
+                RestoreRuntime(_runtimeSnapshots);
+            }
+        }
+
+        public void Publish() => _monitor.PublishPrepared(_next);
     }
 
     private sealed class ListenerSubscription : IDisposable

@@ -14,6 +14,9 @@ public sealed class GodotAudioBusMuteBinding : IRuntimeConfigBinding<bool>
     }
 
     public bool ReadDefault()
+        => ReadCurrent();
+
+    public bool ReadCurrent()
     {
         var busIndex = GetBusIndex();
         return busIndex < 0 ? _fallbackMuted : AudioServer.IsBusMute(busIndex);
