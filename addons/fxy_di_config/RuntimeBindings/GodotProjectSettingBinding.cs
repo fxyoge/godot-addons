@@ -6,30 +6,30 @@ namespace Fxyoge.DependencyInjection.Configuration;
 public sealed class GodotProjectSettingBinding<TValue> : IRuntimeConfigBinding<TValue>
 {
     private readonly string _settingPath;
-    private readonly TValue _defaultValue;
     private readonly bool _runtimeMutable;
     private readonly bool _requiresRestart;
 
     public GodotProjectSettingBinding(
         string settingPath,
-        TValue defaultValue,
         bool runtimeMutable = true,
         bool requiresRestart = false)
     {
         _settingPath = settingPath;
-        _defaultValue = defaultValue;
         _runtimeMutable = runtimeMutable;
         _requiresRestart = requiresRestart;
     }
 
     public TValue ReadDefault()
-        => _defaultValue;
+        => ReadProjectSetting();
 
-    public TValue ReadCurrent()
+    public TValue ReadCurrent() => ReadProjectSetting();
+
+    private TValue ReadProjectSetting()
     {
         if (!ProjectSettings.HasSetting(_settingPath))
         {
-            return _defaultValue;
+            throw new InvalidOperationException(
+                $"ProjectSettings '{_settingPath}' does not exist and cannot be used as a config default.");
         }
 
         var value = ProjectSettings.GetSetting(_settingPath).Obj;

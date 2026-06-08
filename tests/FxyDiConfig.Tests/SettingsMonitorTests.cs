@@ -547,7 +547,6 @@ public sealed class SettingsMonitorTests
     {
         var binding = new GodotProjectSettingBinding<string>(
             "application/config/name",
-            "Game",
             runtimeMutable: false,
             requiresRestart: true);
 

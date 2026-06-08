@@ -62,10 +62,8 @@ public sealed class ConfigStartup : IStartup
                 .ToRuntime(
                     new GodotProjectSettingBinding<string>(
                         "application/config/name",
-                        "DI Config Example",
                         runtimeMutable: false,
-                        requiresRestart: true),
-                    "DI Config Example");
+                        requiresRestart: true));
         });
     }
 
