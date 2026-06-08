@@ -23,6 +23,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
     private readonly HashSet<IOptionPropertyMapping<TOptions>> _changedMappings = new();
     private TOptions _currentValue;
     private bool _pendingReset;
+    private bool _isDisposed;
 
     public TransactionalSettingsMonitor(
         SettingsMonitor<TOptions> liveMonitor,
@@ -41,7 +42,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         _mappingsByProperty = _mappings.ToDictionary(mapping => mapping.Property);
         _currentValue = CloneMapped(_liveMonitor.CurrentValue);
         _liveSubscription = _liveMonitor.OnChange(SyncFromLive);
-        _transaction.Enlist(this, () => HasChanges, PrepareSaveToLive, Abandon);
+        _transaction.Enlist(this, HasChangesForTransaction, PrepareSaveToLive, AbandonForTransaction);
     }
 
     public TOptions CurrentValue
@@ -50,6 +51,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         {
             lock (_sync)
             {
+                ThrowIfDisposed();
                 return CloneMapped(_currentValue);
             }
         }
@@ -61,6 +63,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         {
             lock (_sync)
             {
+                ThrowIfDisposed();
                 return _pendingReset || _changedMappings.Count > 0;
             }
         }
@@ -75,6 +78,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
     {
         lock (_sync)
         {
+            ThrowIfDisposed();
             _listeners.Add(listener);
         }
 
@@ -91,11 +95,13 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         Expression<Func<TOptions, TValue>> property,
         Func<TValue, TValue> update)
     {
+        ThrowIfDisposed();
         var mapping = GetMapping(property);
         TValue current;
 
         lock (_sync)
         {
+            ThrowIfDisposed();
             current = mapping.GetValue<TValue>(_currentValue);
         }
 
@@ -106,17 +112,23 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
         Expression<Func<TOptions, TValue>> property,
         TValue value)
     {
+        ThrowIfDisposed();
         Publish(GetMapping(property), value);
         return ValueTask.CompletedTask;
     }
 
     public ValueTask Reset()
     {
+        ThrowIfDisposed();
         PublishReset(LoadDefaults());
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask Save() => _transaction.Save();
+    public ValueTask Save()
+    {
+        ThrowIfDisposed();
+        return _transaction.Save();
+    }
 
     private IPreparedSettingsCommit PrepareSaveToLive()
     {
@@ -126,6 +138,11 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
         lock (_sync)
         {
+            if (_isDisposed)
+            {
+                return PreparedSettingsCommit.Empty;
+            }
+
             value = CloneMapped(_currentValue);
             pendingReset = _pendingReset;
             changedMappings = _changedMappings.ToArray();
@@ -152,6 +169,11 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
             {
                 lock (_sync)
                 {
+                    if (_isDisposed)
+                    {
+                        return;
+                    }
+
                     _currentValue = CloneMapped(_liveMonitor.CurrentValue);
                     _pendingReset = false;
                     _changedMappings.Clear();
@@ -161,18 +183,51 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
     public void Abandon()
     {
+        ThrowIfDisposed();
+        PublishClean(_liveMonitor.CurrentValue);
+    }
+
+    private bool HasChangesForTransaction()
+    {
+        lock (_sync)
+        {
+            return !_isDisposed && (_pendingReset || _changedMappings.Count > 0);
+        }
+    }
+
+    private void AbandonForTransaction()
+    {
         PublishClean(_liveMonitor.CurrentValue);
     }
 
     public void Dispose()
     {
+        lock (_sync)
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            _isDisposed = true;
+            _listeners.Clear();
+            _changedMappings.Clear();
+            _pendingReset = false;
+        }
+
         _liveSubscription.Dispose();
+        _transaction.Unenlist(this);
     }
 
     private void SyncFromLive(TOptions value)
     {
         lock (_sync)
         {
+            if (_isDisposed)
+            {
+                return;
+            }
+
             if (_pendingReset || _changedMappings.Count > 0)
             {
                 return;
@@ -189,6 +244,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
         lock (_sync)
         {
+            ThrowIfDisposed();
             var next = CloneMapped(_currentValue);
             mapping.SetValue(next, value);
             _currentValue = CloneMapped(next);
@@ -210,6 +266,7 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
         lock (_sync)
         {
+            ThrowIfDisposed();
             _currentValue = CloneMapped(value);
             _pendingReset = true;
             _changedMappings.Clear();
@@ -230,6 +287,11 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
         lock (_sync)
         {
+            if (_isDisposed)
+            {
+                return;
+            }
+
             _currentValue = CloneMapped(value);
             _pendingReset = false;
             _changedMappings.Clear();
@@ -278,6 +340,14 @@ public sealed class TransactionalSettingsMonitor<TOptions> :
 
         throw new InvalidOperationException(
             $"Options property '{typeof(TOptions).FullName}.{propertyInfo.Name}' is not mapped.");
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_isDisposed)
+        {
+            throw new ObjectDisposedException(GetType().FullName);
+        }
     }
 
     private sealed class ListenerSubscription : IDisposable

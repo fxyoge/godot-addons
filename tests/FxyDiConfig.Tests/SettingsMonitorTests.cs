@@ -278,6 +278,96 @@ public sealed class SettingsMonitorTests
     }
 
     [Fact]
+    public async Task DisposedDirtyTransactionalMonitorIsUnenlistedAndNotSaved()
+    {
+        var services = CreateServices(store: out var store);
+        var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+        var transaction = new SettingsTransaction(store);
+        var transactional = CreateTransactionalMonitor(services, transaction);
+
+        await transactional.Set(options => options.Volume, 0.5f);
+
+        transactional.Dispose();
+        await transaction.Save();
+
+        Assert.False(transaction.HasChanges);
+        Assert.Equal(0.75f, monitor.CurrentValue.Volume);
+        Assert.Equal(0.75f, runtime.AppliedValue);
+        Assert.False(store.TryGet<float>("settings", "volume", out _));
+        Assert.Equal(0, store.SaveCount);
+    }
+
+    [Fact]
+    public async Task DisposedTransactionalMonitorIsNotAbandonedByTransaction()
+    {
+        var services = CreateServices(store: out var store);
+        var transaction = new SettingsTransaction(store);
+        var transactional = CreateTransactionalMonitor(services, transaction);
+        var notificationCount = 0;
+
+        transactional.OnChange(_ => notificationCount++);
+        await transactional.Set(options => options.Volume, 0.5f);
+        Assert.Equal(1, notificationCount);
+
+        transactional.Dispose();
+        transaction.Abandon();
+
+        Assert.False(transaction.HasChanges);
+        Assert.Equal(1, notificationCount);
+    }
+
+    [Fact]
+    public async Task DisposingOneTransactionalMonitorDoesNotUnenlistOtherParticipants()
+    {
+        var services = CreateServices(store: out var store);
+        var runtime = services.GetRequiredService<TestRuntimeBinding<float>>();
+        var monitor = services.GetRequiredService<ISettingsMonitor<TestOptions>>();
+        var transaction = new SettingsTransaction(store);
+        var disposedTransactional = CreateTransactionalMonitor(services, transaction);
+        var activeTransactional = CreateTransactionalMonitor(services, transaction);
+
+        await disposedTransactional.Set(options => options.Volume, 0.5f);
+        await activeTransactional.Set(options => options.Muted, true);
+
+        disposedTransactional.Dispose();
+        await transaction.Save();
+
+        Assert.Equal(0.75f, monitor.CurrentValue.Volume);
+        Assert.True(monitor.CurrentValue.Muted);
+        Assert.Equal(0.75f, runtime.AppliedValue);
+        Assert.False(store.TryGet<float>("settings", "volume", out _));
+        Assert.True(store.TryGet<bool>("settings", "muted", out var storedMuted));
+        Assert.True(storedMuted);
+        Assert.Equal(1, store.SaveCount);
+        Assert.False(transaction.HasChanges);
+    }
+
+    [Fact]
+    public async Task DisposedTransactionalMonitorRejectsFurtherUse()
+    {
+        var services = CreateServices(store: out var store);
+        var transaction = new SettingsTransaction(store);
+        var transactional = CreateTransactionalMonitor(services, transaction);
+
+        transactional.Dispose();
+        transactional.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => transactional.CurrentValue);
+        Assert.Throws<ObjectDisposedException>(() => transactional.HasChanges);
+        Assert.Throws<ObjectDisposedException>(() => transactional.OnChange(_ => { }));
+        Assert.Throws<ObjectDisposedException>(() => transactional.Abandon());
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () => await transactional.Set(options => options.Volume, 0.5f));
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () => await transactional.Update(options => options.Volume, volume => volume - 0.1f));
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () => await transactional.Reset());
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () => await transactional.Save());
+    }
+
+    [Fact]
     public async Task ResetRemovesOverlayAndReloadsRuntimeDefaults()
     {
         var services = CreateServices(store: out var store);
@@ -500,6 +590,14 @@ public sealed class SettingsMonitorTests
             ValidateScopes = true,
         });
     }
+
+    private static TransactionalSettingsMonitor<TestOptions> CreateTransactionalMonitor(
+        ServiceProvider services,
+        SettingsTransaction transaction)
+        => new(
+            services.GetRequiredService<SettingsMonitor<TestOptions>>(),
+            transaction,
+            services.GetServices<ISettingsRegistration<TestOptions>>());
 
     private sealed class TestOptions
     {

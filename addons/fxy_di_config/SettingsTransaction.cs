@@ -125,6 +125,14 @@ public sealed class SettingsTransaction : ISettingsTransaction
         }
     }
 
+    internal void Unenlist(object owner)
+    {
+        lock (_sync)
+        {
+            _participants.RemoveAll(participant => ReferenceEquals(participant.Owner, owner));
+        }
+    }
+
     private sealed record SettingsTransactionParticipant(
         object Owner,
         Func<bool> HasChanges,
